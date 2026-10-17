@@ -1,0 +1,31 @@
+import { useState, type ReactElement } from 'react';
+import { SceneCanvas } from './components/SceneCanvas';
+import { TacticalRail } from './components/TacticalRail';
+import { TelemetryHeader } from './components/TelemetryHeader';
+import { TelemetryPanels } from './components/TelemetryPanels';
+import { useLocalTelemetry, type CameraMode } from './lib/telemetry';
+
+export function App(): ReactElement {
+  const telemetry = useLocalTelemetry();
+  const [cameraMode, setCameraMode] = useState<CameraMode>('overview');
+
+  return (
+    <main className="mission-app">
+      <SceneCanvas load={telemetry.loadPercent} cameraMode={cameraMode} />
+      <div className="scene-vignette" aria-hidden="true" />
+      <div className="scanline-overlay" aria-hidden="true" />
+      <div className="viewport-crosshair" aria-hidden="true"><span /><span /></div>
+      <div className="facility-caption" aria-hidden="true"><span>FACILITY DIGITAL TWIN</span><strong>AETHERGRID / GRID NODE 07</strong></div>
+
+      <div className="hud-layer">
+        <TelemetryHeader telemetry={telemetry} />
+        <TacticalRail telemetry={telemetry} cameraMode={cameraMode} onCameraModeChange={setCameraMode} />
+        <TelemetryPanels telemetry={telemetry} />
+        <footer className="hud-footer">
+          <span>LOCAL SIMULATION // DETERMINISTIC TELEMETRY STREAM</span>
+          <span>BUILD 0.1.0 <i /> ALL SYSTEMS MONITORED</span>
+        </footer>
+      </div>
+    </main>
+  );
+}
