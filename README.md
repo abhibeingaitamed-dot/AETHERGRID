@@ -103,7 +103,7 @@ The multi-stage Dockerfile builds the Vite bundle with Node 22.11.0, installs th
 
 ```bash
 docker build -t aethergrid:turn-2 .
-docker run --rm -p 8000:8000 aethergrid:turn-2
+docker run --rm --env-file .env.example -p 8000:8000 aethergrid:turn-2
 ```
 
 Open <http://localhost:8000> for the compiled Mission Deck, or verify the container contract:
