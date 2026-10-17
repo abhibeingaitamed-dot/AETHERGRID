@@ -47,8 +47,8 @@ export function TelemetryHeader({ telemetry }: TelemetryHeaderProps): ReactEleme
 
       <div className="header-readout compact-readout">
         <span className="readout-label">LINK DIAGNOSTICS</span>
-        <strong className="mono-value connection-value"><span className="signal-bars" aria-hidden="true"><i /><i /><i /><i /></span> SECURE</strong>
-        <span className="sub-readout">{formatNumber(telemetry.connectionLatencyMs, 2)} ms RTT</span>
+        <strong className={`mono-value connection-value ${telemetry.streamStatus.toLowerCase()}`}><span className="signal-bars" aria-hidden="true"><i /><i /><i /><i /></span> {telemetry.streamStatus}</strong>
+        <span className="sub-readout">{formatNumber(telemetry.streamHz, 0)} Hz PHYSICS LINK · {formatNumber(telemetry.connectionLatencyMs, 1)} ms TICK</span>
       </div>
     </header>
   );

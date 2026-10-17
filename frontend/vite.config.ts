@@ -10,6 +10,10 @@ export default defineConfig({
       '/api': 'http://localhost:8000',
       '/health': 'http://localhost:8000',
       '/ready': 'http://localhost:8000',
+      '/ws': {
+        target: 'ws://localhost:8000',
+        ws: true,
+      },
     },
   },
   build: {

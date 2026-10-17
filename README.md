@@ -1,8 +1,8 @@
 # AETHERGRID // Mission Deck
 
-AETHERGRID is a cinematic cyber-physical command surface for co-orchestrating hyperscale AI compute with high-voltage grid infrastructure. Turn 1 delivers the complete local foundation: a FastAPI service with typed health/readiness contracts and a React + TypeScript + Three.js mission deck powered by deterministic browser telemetry.
+AETHERGRID is a cinematic cyber-physical command surface for co-orchestrating hyperscale AI compute with high-voltage grid infrastructure. Turn 2 adds a 1 kHz internal microgrid solver, a 20 Hz FastAPI telemetry runtime, and an in-process four-agent response swarm behind a bidirectional WebSocket bridge.
 
-## Turn 1 capabilities
+## Turn 2 capabilities
 
 - **12,000 GPU compute nodes** rendered through a Three.js `InstancedMesh` as 48 rack units across six rack corridors.
 - **Subterranean cooling conduits** and high-voltage transmission paths built from animated custom GLSL energy materials.
@@ -12,8 +12,11 @@ AETHERGRID is a cinematic cyber-physical command surface for co-orchestrating hy
 - **Unreal Bloom, chromatic aberration, and depth of field** post-processing passes in the Three.js composer.
 - **Glassmorphic tactical HUD** with UTC millisecond clock, system readiness, grid frequency, link diagnostics, compute telemetry, energy-silicon status, and event log.
 - **Typed FastAPI endpoints** at `/health`, `/ready`, `/api/v1/health`, and `/api/v1/ready`, with configurable CORS.
+- **Live bidirectional WebSocket telemetry** at `/ws/telemetry` and `/api/v1/ws/telemetry`, publishing validated grid, cluster, battery, and swarm state at 20 Hz while accepting `ping`, `contingency`, and `reset` commands.
+- **Numerical microgrid physics** using the normalized swing equation with 60 Hz nominal frequency, a 1,000 MW base, 3.5 s inertia, 1.5 pu/Hz load damping, millisecond integration, generator trips capped at 350 MW, 150 MW aggregate facility-equivalent DVFS shedding, and 200 MW sub-cycle battery response.
+- **Four autonomous agents**: Sentinel, Arbiter, Dispatcher, and Auditor. The default Arbiter cost curve protects Tier 1 first by allocating lower blended SLA/checkpoint cost tiers before higher-priority workloads.
 
-The browser telemetry stream is deterministic and local by design for Turn 1. It uses bounded sine-wave signals rather than random values, making load, thermal, coolant, frequency, and transformer behavior reproducible without a physics WebSocket. The live grid-physics transport is reserved for the approved Turn 2 scope.
+The browser no longer generates telemetry locally. It connects to the backend WebSocket, automatically reconnects with bounded exponential backoff, and maps the live cluster load directly to the Three.js shader uniform driving busbar velocity, bloom, particle scale, and rack thermal emission.
 
 ## Repository layout
 
@@ -23,12 +26,16 @@ backend/
     config.py       environment-backed typed settings
     models.py       strict health/readiness response models
     main.py         FastAPI application and static frontend serving
-  tests/             contract tests for health, readiness, and CORS
+    physics.py      millisecond swing-equation integration engine
+    swarm.py        Sentinel/Arbiter/Dispatcher/Auditor coordination
+    contracts.py    WebSocket envelope and command models
+    runtime.py      20 Hz async simulation broadcaster
+  tests/             physics, swarm, WebSocket, health, readiness, and CORS tests
 frontend/
   src/
     scene/           Three.js digital twin and GLSL shaders
     components/      HUD, telemetry cards, and scene host
-    lib/             deterministic telemetry model and formatting
+    lib/             live WebSocket telemetry client and formatting
     App.tsx          Mission Deck composition
     styles.css       cinematic HUD visual system
 Dockerfile           reproducible multi-stage build
@@ -63,7 +70,7 @@ Start the FastAPI API and Vite Mission Deck together:
 ./scripts/dev.sh
 ```
 
-Open <http://localhost:5173>. The Vite proxy forwards `/health`, `/ready`, and `/api/*` requests to FastAPI on port 8000.
+Open <http://localhost:5173>. The Vite proxy forwards `/health`, `/ready`, `/api/*`, and `/ws/*` requests to FastAPI on port 8000. The backend schedules a deterministic 320 MW generator-trip demonstration at simulation time 3 seconds; the same condition can be triggered interactively through the WebSocket command contract.
 
 To run each process separately:
 
@@ -72,7 +79,7 @@ To run each process separately:
 npm run dev --workspace frontend
 ```
 
-The API alone is available at <http://localhost:8000/health> and <http://localhost:8000/ready>. When a production frontend build exists, FastAPI serves `frontend/dist` from the root route and `/assets`.
+The API alone is available at <http://localhost:8000/health> and <http://localhost:8000/ready>. The live bridge is available at `ws://localhost:8000/ws/telemetry`. When a production frontend build exists, FastAPI serves `frontend/dist` from the root route and `/assets`.
 
 ## Test and build
 
@@ -95,6 +102,8 @@ npm run build
 The multi-stage Dockerfile builds the Vite bundle with Node 22.11.0, installs the pinned Python dependencies into a Python 3.12.7 runtime, and serves both the API and compiled Mission Deck from one process.
 
 ```bash
+docker build -t aethergrid:turn-2 .
+docker run --rm -p 8000:8000 aethergrid:turn-2
 ```
 
 Open <http://localhost:8000> for the compiled Mission Deck, or verify the container contract:
@@ -114,8 +123,8 @@ Copy `.env.example` when a local environment file is needed:
 cp .env.example .env
 ```
 
-Supported values are `AETHERGRID_ENVIRONMENT`, `AETHERGRID_ALLOWED_ORIGINS` (comma-separated), and `AETHERGRID_API_PORT`. No secrets are needed for Turn 1.
+Supported values are `AETHERGRID_ENVIRONMENT`, `AETHERGRID_ALLOWED_ORIGINS` (comma-separated), `AETHERGRID_API_PORT`, `AETHERGRID_LOAD_DAMPING_PU_PER_HZ`, `AETHERGRID_AUTO_CONTINGENCY_AFTER_S`, and `AETHERGRID_AUTO_CONTINGENCY_TRIP_MW`. No secrets are needed for Turn 2.
 
 ## UI controls
 
-The left-side Camera Rig selects the three cinematic camera poses. The operator can also move the pointer across the viewport for subtle camera parallax. The digital twin reacts continuously to the local telemetry stream: busbar velocity, bloom intensity, rack thermal palette, heat shimmer density, particle scale, and HUD meters all follow the same bounded grid-load signal.
+The left-side Camera Rig selects the three cinematic camera poses. The operator can also move the pointer across the viewport for subtle camera parallax. The digital twin reacts continuously to the live physics stream: busbar velocity, bloom intensity, rack thermal palette, heat shimmer density, particle scale, and HUD meters all follow backend-computed cluster load and grid balance.

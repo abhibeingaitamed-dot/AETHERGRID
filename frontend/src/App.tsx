@@ -3,10 +3,10 @@ import { SceneCanvas } from './components/SceneCanvas';
 import { TacticalRail } from './components/TacticalRail';
 import { TelemetryHeader } from './components/TelemetryHeader';
 import { TelemetryPanels } from './components/TelemetryPanels';
-import { useLocalTelemetry, type CameraMode } from './lib/telemetry';
+import { useLiveTelemetry, type CameraMode } from './lib/telemetry';
 
 export function App(): ReactElement {
-  const telemetry = useLocalTelemetry();
+  const telemetry = useLiveTelemetry();
   const [cameraMode, setCameraMode] = useState<CameraMode>('overview');
 
   return (

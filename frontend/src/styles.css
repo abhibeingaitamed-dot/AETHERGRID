@@ -341,6 +341,18 @@ button {
   font-size: 10px !important;
 }
 
+.connection-value.reconnecting,
+.connection-value.connecting,
+.live-label.reconnecting,
+.live-label.connecting {
+  color: var(--amber) !important;
+}
+
+.connection-value.offline,
+.live-label.offline {
+  color: var(--red) !important;
+}
+
 .sub-readout {
   color: #4f7389;
   font-family: "SFMono-Regular", Consolas, monospace;
@@ -814,6 +826,19 @@ button {
 .dock-event time {
   margin-left: auto;
   color: #4e748b;
+}
+
+.physics-strip {
+  display: flex;
+  justify-content: space-between;
+  gap: 7px;
+  margin-top: 11px;
+  padding: 7px 0 0;
+  border-top: 1px solid rgba(100, 194, 220, 0.13);
+  color: #82b9ca;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8px;
+  letter-spacing: 0.03em;
 }
 
 .event-pulse {

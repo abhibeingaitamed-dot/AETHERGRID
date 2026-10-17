@@ -1,9 +1,21 @@
 import { useEffect, useState } from 'react';
 
 export type CameraMode = 'overview' | 'canyon' | 'inspection';
+export type StreamStatus = 'CONNECTING' | 'LIVE' | 'RECONNECTING' | 'OFFLINE';
+
+export interface AgentLogEntry {
+  sequence: number;
+  time_s: number;
+  agent: 'SENTINEL' | 'ARBITER' | 'DISPATCHER' | 'AUDITOR';
+  level: 'INFO' | 'WARN' | 'ALERT' | 'DECISION' | 'ACTION';
+  message: string;
+}
 
 export interface TelemetrySnapshot {
   elapsedSeconds: number;
+  simulationTimeMs: number;
+  streamHz: number;
+  streamStatus: StreamStatus;
   loadPercent: number;
   frequencyHz: number;
   voltageKv: number;
@@ -19,65 +31,226 @@ export interface TelemetrySnapshot {
   transformerLoadPercent: number;
   nodeHealthPercent: number;
   alertCount: number;
+  rocofHzPerSecond: number;
+  generationMw: number;
+  demandMw: number;
+  balanceMw: number;
+  computeShedMw: number;
+  batteryInjectionMw: number;
+  throttledGpuCount: number;
+  nadirHz: number;
+  sentinelState: string;
+  arbiterState: string;
+  dispatcherState: string;
+  auditorState: string;
+  auditorDetail: string;
   gridState: 'NOMINAL' | 'ELEVATED' | 'CRITICAL';
+  agentLogs: AgentLogEntry[];
 }
 
-const TOTAL_NODES = 12000;
+interface LiveTelemetryEnvelope {
+  type: 'telemetry';
+  sequence: number;
+  simulation_time_ms: number;
+  stream_hz: number;
+  grid: {
+    frequency_hz: number;
+    frequency_deviation_hz: number;
+    rocof_hz_per_second: number;
+    generation_mw: number;
+    demand_mw: number;
+    balance_mw: number;
+    voltage_kv: number;
+    generator_trip_mw: number;
+    nadir_hz: number;
+    base_capacity_mw: number;
+    contingency_active: boolean;
+  };
+  compute: {
+    total_gpu_count: number;
+    active_gpu_count: number;
+    cluster_nominal_power_mw: number;
+    cluster_power_mw: number;
+    shed_mw: number;
+    throttled_gpu_count: number;
+    thermal_celsius: number;
+    coolant_celsius: number;
+  };
+  battery: {
+    injection_mw: number;
+  };
+  agents: {
+    sentinel_state: string;
+    arbiter_state: string;
+    dispatcher_state: string;
+    auditor_state: string;
+    sentinel_alert: boolean;
+    last_battery_dispatch_mw: number;
+    last_compute_curtailment_mw: number;
+    auditor_nadir_ok: boolean;
+    auditor_recovery_ok: boolean;
+    auditor_detail: string;
+  };
+  events: AgentLogEntry[];
+}
+
 const TOTAL_RACKS = 48;
 
-const clamp = (value: number, minimum: number, maximum: number): number => Math.min(Math.max(value, minimum), maximum);
+const emptyTelemetry = (streamStatus: StreamStatus): TelemetrySnapshot => ({
+  elapsedSeconds: 0,
+  simulationTimeMs: 0,
+  streamHz: 20,
+  streamStatus,
+  loadPercent: 0,
+  frequencyHz: 60,
+  voltageKv: 345,
+  thermalCelsius: 0,
+  efficiencyPercent: 100,
+  activeNodes: 12_000,
+  rackCount: TOTAL_RACKS,
+  powerMw: 0,
+  connectionLatencyMs: 0,
+  packetLossPercent: 0,
+  phaseAngleDegrees: 0,
+  coolantCelsius: 0,
+  transformerLoadPercent: 0,
+  nodeHealthPercent: 100,
+  alertCount: 0,
+  rocofHzPerSecond: 0,
+  generationMw: 1_000,
+  demandMw: 1_000,
+  balanceMw: 0,
+  computeShedMw: 0,
+  batteryInjectionMw: 0,
+  throttledGpuCount: 0,
+  nadirHz: 60,
+  sentinelState: 'MONITORING',
+  arbiterState: 'STANDBY',
+  dispatcherState: 'STANDBY',
+  auditorState: 'MONITORING',
+  auditorDetail: 'waiting for telemetry stream',
+  gridState: 'NOMINAL',
+  agentLogs: [],
+});
 
-export function telemetryAt(elapsedSeconds: number): TelemetrySnapshot {
-  const loadWave = Math.sin(elapsedSeconds * 0.115) * 0.12 + Math.sin(elapsedSeconds * 0.031 + 1.2) * 0.10;
-  const load = clamp(0.73 + loadWave, 0.12, 0.97);
-  const frequency = 60 + Math.sin(elapsedSeconds * 0.19) * 0.018 - load * 0.004;
-  const voltage = 345 + Math.sin(elapsedSeconds * 0.073 + 0.5) * 2.6 - load * 1.7;
-  const thermal = 58 + load * 28 + Math.sin(elapsedSeconds * 0.17) * 3.2;
-  const coolant = 18.5 + load * 5.8 + Math.sin(elapsedSeconds * 0.12 + 2.1) * 0.8;
-  const transformerLoad = clamp(0.54 + load * 0.36 + Math.sin(elapsedSeconds * 0.09) * 0.04, 0, 1);
-  const loadPercent = load * 100;
-  const thermalCelsius = thermal;
-  const state = load > 0.9 ? 'CRITICAL' : load > 0.79 ? 'ELEVATED' : 'NOMINAL';
+const isLiveTelemetryEnvelope = (value: unknown): value is LiveTelemetryEnvelope => {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<LiveTelemetryEnvelope>;
+  return Boolean(
+    candidate.type === 'telemetry' &&
+      candidate.grid &&
+      candidate.compute &&
+      candidate.battery &&
+      candidate.agents &&
+      Array.isArray(candidate.events),
+  );
+};
+
+const mapEnvelope = (envelope: LiveTelemetryEnvelope, streamStatus: StreamStatus): TelemetrySnapshot => {
+  const loadPercent = envelope.compute.cluster_nominal_power_mw > 0
+    ? (envelope.compute.cluster_power_mw / envelope.compute.cluster_nominal_power_mw) * 100
+    : 0;
+  const alertCount = envelope.events.filter((event) => event.level === 'ALERT' || event.level === 'WARN').length;
+  const gridState = envelope.agents.sentinel_alert || envelope.grid.frequency_hz < 59.9
+    ? 'CRITICAL'
+    : Math.abs(envelope.grid.rocof_hz_per_second) > 0.05 || envelope.compute.shed_mw > 0
+      ? 'ELEVATED'
+      : 'NOMINAL';
 
   return {
-    elapsedSeconds,
+    elapsedSeconds: envelope.simulation_time_ms / 1_000,
+    simulationTimeMs: envelope.simulation_time_ms,
+    streamHz: envelope.stream_hz,
+    streamStatus,
     loadPercent,
-    frequencyHz: frequency,
-    voltageKv: voltage,
-    thermalCelsius,
-    efficiencyPercent: 99.2 - load * 2.4 + Math.sin(elapsedSeconds * 0.13) * 0.12,
-    activeNodes: Math.round(TOTAL_NODES * (0.965 + Math.sin(elapsedSeconds * 0.047) * 0.012)),
+    frequencyHz: envelope.grid.frequency_hz,
+    voltageKv: envelope.grid.voltage_kv,
+    thermalCelsius: envelope.compute.thermal_celsius,
+    efficiencyPercent: Math.max(0, 100 - Math.abs(envelope.grid.balance_mw) * 0.02),
+    activeNodes: envelope.compute.active_gpu_count,
     rackCount: TOTAL_RACKS,
-    powerMw: 8.6 + load * 4.9,
-    connectionLatencyMs: 0.74 + Math.sin(elapsedSeconds * 0.39) * 0.12 + load * 0.16,
-    packetLossPercent: clamp(0.006 + load * 0.015 + Math.sin(elapsedSeconds * 0.23) * 0.003, 0.001, 0.05),
-    phaseAngleDegrees: 0.8 + Math.sin(elapsedSeconds * 0.11) * 1.4 + load * 0.24,
-    coolantCelsius: coolant,
-    transformerLoadPercent: transformerLoad * 100,
-    nodeHealthPercent: 99.94 - load * 0.6,
-    alertCount: state === 'CRITICAL' ? 4 : state === 'ELEVATED' ? 2 : 0,
-    gridState: state,
+    powerMw: envelope.compute.cluster_power_mw,
+    connectionLatencyMs: 1_000 / Math.max(envelope.stream_hz, 1),
+    packetLossPercent: 0,
+    phaseAngleDegrees: envelope.grid.frequency_deviation_hz * 12,
+    coolantCelsius: envelope.compute.coolant_celsius,
+    transformerLoadPercent: Math.min(100, (envelope.grid.generation_mw / envelope.grid.base_capacity_mw) * 100),
+    nodeHealthPercent: (envelope.compute.active_gpu_count / envelope.compute.total_gpu_count) * 100,
+    alertCount,
+    rocofHzPerSecond: envelope.grid.rocof_hz_per_second,
+    generationMw: envelope.grid.generation_mw,
+    demandMw: envelope.grid.demand_mw,
+    balanceMw: envelope.grid.balance_mw,
+    computeShedMw: envelope.compute.shed_mw,
+    batteryInjectionMw: envelope.battery.injection_mw,
+    throttledGpuCount: envelope.compute.throttled_gpu_count,
+    nadirHz: envelope.grid.nadir_hz,
+    sentinelState: envelope.agents.sentinel_state,
+    arbiterState: envelope.agents.arbiter_state,
+    dispatcherState: envelope.agents.dispatcher_state,
+    auditorState: envelope.agents.auditor_state,
+    auditorDetail: envelope.agents.auditor_detail,
+    gridState,
+    agentLogs: envelope.events,
   };
+};
+
+function telemetrySocketUrl(): string {
+  const configuredUrl = import.meta.env.VITE_API_WS_URL as string | undefined;
+  if (configuredUrl) return configuredUrl;
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}/ws/telemetry`;
 }
 
-export function useLocalTelemetry(): TelemetrySnapshot {
-  const [snapshot, setSnapshot] = useState<TelemetrySnapshot>(() => telemetryAt(0));
+export function useLiveTelemetry(): TelemetrySnapshot {
+  const [snapshot, setSnapshot] = useState<TelemetrySnapshot>(() => emptyTelemetry('CONNECTING'));
 
   useEffect(() => {
-    let frame = 0;
-    let lastPublish = -Infinity;
-    const publishInterval = 120;
+    let socket: WebSocket | null = null;
+    let reconnectTimer: number | null = null;
+    let disposed = false;
+    let attempts = 0;
 
-    const tick = (timestamp: number): void => {
-      if (timestamp - lastPublish >= publishInterval) {
-        setSnapshot(telemetryAt(timestamp / 1000));
-        lastPublish = timestamp;
-      }
-      frame = requestAnimationFrame(tick);
+    const scheduleReconnect = (): void => {
+      if (disposed) return;
+      attempts += 1;
+      const backoffMs = Math.min(4_000, 250 * 2 ** Math.min(attempts - 1, 4));
+      setSnapshot((current) => ({ ...current, streamStatus: 'RECONNECTING' }));
+      reconnectTimer = window.setTimeout(connect, backoffMs);
     };
 
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    const connect = (): void => {
+      if (disposed) return;
+      setSnapshot((current) => ({ ...current, streamStatus: attempts === 0 ? 'CONNECTING' : 'RECONNECTING' }));
+      socket = new WebSocket(telemetrySocketUrl());
+      socket.onopen = () => {
+        attempts = 0;
+        setSnapshot((current) => ({ ...current, streamStatus: 'LIVE' }));
+        socket?.send(JSON.stringify({ type: 'ping', request_id: `hud-${Date.now()}` }));
+      };
+      socket.onmessage = (event) => {
+        try {
+          const parsed: unknown = JSON.parse(event.data as string);
+          if (isLiveTelemetryEnvelope(parsed)) {
+            setSnapshot(mapEnvelope(parsed, 'LIVE'));
+          }
+        } catch {
+          setSnapshot((current) => ({ ...current, streamStatus: 'RECONNECTING' }));
+        }
+      };
+      socket.onerror = () => socket?.close();
+      socket.onclose = () => {
+        socket = null;
+        scheduleReconnect();
+      };
+    };
+
+    connect();
+    return () => {
+      disposed = true;
+      if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
+      socket?.close();
+    };
   }, []);
 
   return snapshot;
