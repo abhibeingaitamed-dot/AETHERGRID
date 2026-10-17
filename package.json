@@ -1,0 +1,16 @@
+{
+  "name": "aethergrid",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AETHERGRID cinematic cyber-physical mission deck",
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace frontend",
+    "test": "npm run build --workspace frontend"
+  },
+  "engines": {
+    "node": ">=22.11.0 <23"
+  }
+}

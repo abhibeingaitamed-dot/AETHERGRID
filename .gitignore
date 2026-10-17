@@ -1,0 +1,11 @@
+node_modules/
+frontend/dist/
+frontend/.vite/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
+.env
+coverage.xml
+.coverage

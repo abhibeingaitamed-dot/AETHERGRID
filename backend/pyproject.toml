@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=75.6.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aethergrid-backend"
+version = "0.1.0"
+description = "Typed FastAPI service for the AETHERGRID mission deck"
+requires-python = ">=3.9,<3.13"
+dependencies = [
+  "fastapi==0.115.6",
+  "uvicorn==0.34.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
