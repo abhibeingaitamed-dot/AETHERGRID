@@ -1,10 +1,12 @@
 .PHONY: install install-frontend install-backend dev test build clean
 
+PYTHON_BIN ?= .venv/bin/python
+
 install: install-backend install-frontend
 
 install-backend:
-	python3 -m pip install --upgrade pip
-	python3 -m pip install -r backend/requirements.lock
+	python3 -m venv .venv
+	$(PYTHON_BIN) -m pip install -r backend/requirements.lock
 
 install-frontend:
 
@@ -12,7 +14,8 @@ dev:
 	@./scripts/dev.sh
 
 test:
-	python3 -m pytest backend/tests
+	@test -x "$(PYTHON_BIN)" || (printf 'Run make install first to create the project-local Python environment.\n' >&2; exit 1)
+	$(PYTHON_BIN) -m pytest backend/tests
 	npm run build
 
 build:
