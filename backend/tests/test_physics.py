@@ -42,6 +42,21 @@ def test_generator_trip_is_capped_and_fast_response_converges() -> None:
     assert abs(snapshot.power_balance_mw) < 1e-9
 
 
+def test_full_actuator_request_reaches_150_mw_shed_by_80_ms() -> None:
+    engine = MicrogridPhysicsEngine()
+    engine.apply_generator_trip(350.0)
+    engine.apply_control(
+        battery_injection_mw=200.0,
+        tier_shed_mw={"TIER_1": 20.0, "TIER_2": 50.0, "TIER_3": 80.0},
+    )
+
+    snapshot = engine.advance(0.080)
+
+    assert snapshot.time_s == pytest.approx(0.080)
+    assert snapshot.compute_shed_mw == pytest.approx(150.0)
+    assert snapshot.battery_injection_mw == pytest.approx(200.0)
+
+
 def test_calibration_constants_are_explicit_and_exact() -> None:
     config = PhysicsConfig()
 

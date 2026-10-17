@@ -52,3 +52,23 @@ def test_arbiter_minimizes_sla_damage_before_touching_tier_one() -> None:
     assert decision.tier_shed_mw["TIER_3"] == 50.0
     assert decision.tier_shed_mw["TIER_2"] == 0.0
     assert decision.tier_shed_mw["TIER_1"] == 0.0
+
+
+def test_auditor_treats_the_59_70_hz_nadir_boundary_as_a_violation() -> None:
+    engine = MicrogridPhysicsEngine()
+    swarm = FourAgentSwarm(engine)
+    engine.apply_generator_trip(350.0)
+    baseline = engine.snapshot()
+
+    assessment = swarm.auditor.assess(
+        replace(
+            baseline,
+            contingency_active=True,
+            nadir_hz=59.70,
+            recovery_time_s=0.120,
+        )
+    )
+
+    assert not assessment.nadir_ok
+    assert not assessment.converged
+    assert assessment.status == "VIOLATION"
