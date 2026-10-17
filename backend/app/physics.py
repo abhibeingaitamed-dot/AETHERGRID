@@ -34,6 +34,21 @@ class TierSpec:
     def mw_per_gpu(self) -> float:
         return self.nominal_power_mw / self.gpu_count
 
+    def cost_for_shed(self, shed_mw: float) -> float:
+        """Return the blended SLA and checkpoint cost for a tier curtailment.
+
+        The marginal cost rises as a tier is exhausted, which keeps the
+        Arbiter's allocation deterministic while representing nonlinear SLA
+        damage and checkpoint pressure.
+        """
+        amount = min(max(0.0, shed_mw), self.max_shed_mw)
+        if amount == 0:
+            return 0.0
+        fraction = amount / self.max_shed_mw if self.max_shed_mw else 0.0
+        sla_curve = self.sla_penalty_per_mw * amount * (1.0 + 0.5 * fraction)
+        checkpoint_curve = self.checkpoint_cost_per_mw * amount * (1.0 + fraction)
+        return sla_curve + checkpoint_curve
+
 
 DEFAULT_TIERS: Tuple[TierSpec, ...] = (
     TierSpec(

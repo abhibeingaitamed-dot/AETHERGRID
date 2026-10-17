@@ -119,7 +119,7 @@ class ArbiterAgent:
             amount = min(remaining_mw, tier.max_shed_mw)
             allocation[tier.name] = amount
             remaining_mw -= amount
-            estimated_cost += amount * (tier.sla_penalty_per_mw + tier.checkpoint_cost_per_mw)
+            estimated_cost += tier.cost_for_shed(amount)
             if remaining_mw <= 1e-9:
                 break
 
