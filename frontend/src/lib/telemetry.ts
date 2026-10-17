@@ -28,8 +28,8 @@ const TOTAL_RACKS = 48;
 const clamp = (value: number, minimum: number, maximum: number): number => Math.min(Math.max(value, minimum), maximum);
 
 export function telemetryAt(elapsedSeconds: number): TelemetrySnapshot {
-  const loadWave = Math.sin(elapsedSeconds * 0.115) * 0.095 + Math.sin(elapsedSeconds * 0.031 + 1.2) * 0.055;
-  const load = clamp(0.68 + loadWave, 0.12, 0.97);
+  const loadWave = Math.sin(elapsedSeconds * 0.115) * 0.12 + Math.sin(elapsedSeconds * 0.031 + 1.2) * 0.10;
+  const load = clamp(0.73 + loadWave, 0.12, 0.97);
   const frequency = 60 + Math.sin(elapsedSeconds * 0.19) * 0.018 - load * 0.004;
   const voltage = 345 + Math.sin(elapsedSeconds * 0.073 + 0.5) * 2.6 - load * 1.7;
   const thermal = 58 + load * 28 + Math.sin(elapsedSeconds * 0.17) * 3.2;

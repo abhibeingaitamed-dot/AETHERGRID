@@ -489,8 +489,8 @@ export class MissionScene {
   private animate = (): void => {
     if (this.disposed) return;
     this.animationFrame = requestAnimationFrame(this.animate);
-    const elapsed = this.clock.getElapsedTime();
     const delta = Math.min(this.clock.getDelta() || 0.016, 0.1);
+    const elapsed = this.clock.elapsedTime;
     const pose = CAMERA_POSES[this.mode];
     const damping = 1 - Math.exp(-delta * 3.4);
 
