@@ -4,6 +4,7 @@ export interface AudioTelemetryInput {
   batteryInjectionMw: number;
   auditorState: string;
   streamStatus: string;
+  contingencyActive: boolean;
   sentinelAlert: boolean;
   transformerTemperatureCelsius: number;
 }
@@ -72,6 +73,7 @@ export class WebAudioSynthesizer {
       telemetry.frequencyHz < 59.8
       || telemetry.sentinelAlert
       || telemetry.transformerTemperatureCelsius > 125
+      || (telemetry.contingencyActive && telemetry.auditorState !== 'CONVERGED')
     );
     const alarmTarget = alarmActive ? 0.105 : 0;
     this.alarmBus?.gain.setTargetAtTime(alarmTarget, now, alarmActive ? 0.028 : 0.16);
