@@ -4,7 +4,7 @@
 
 AETHERGRID is a full-stack cyber-physical war room that couples a normalized per-unit microgrid model, a four-agent response swarm, a live bidirectional WebSocket bridge, and a cinematic Three.js digital twin. Operators can inject controlled contingencies, observe millisecond-scale frequency behavior, hear the response state, and quantify the financial and carbon value of every successful intervention.
 
-Turn 5 adds a warm cinematic soundscape selector, cinematic Director Tour autopilot, volumetric facility atmosphere, sweeping lidar illumination, transparent coolant-floor simulation, and interactive rack raycasting.
+Turn 6 adds a two-mode procedural audio console, interaction haptics, a fluid three-column command HUD, and automated responsive-layout verification across desktop and resize breakpoints. The cinematic Director Tour, volumetric facility atmosphere, sweeping lidar illumination, transparent coolant-floor simulation, and interactive rack raycasting remain available.
 
 ## Executive value proposition
 
@@ -34,16 +34,18 @@ flowchart LR
 
 The same backend frame drives the physics, the swarm, the impact ledger, the HUD, the 3D shader uniforms, the oscilloscope, and the audio engine. React state updates at the telemetry cadence; the Three.js and Canvas render loops remain independent for smooth visual output.
 
-## Turn 5 cinematic upgrades
+## Turn 5–6 cinematic and operator upgrades
 
 - **Cinematic Ambient:** warm filtered sine/triangle drone, stereo chorus, resonant low-pass shaping, and soft tape saturation.
-- **Minimalist Haptics:** response clicks, distant battery rumble, and recovery chord without the continuous drone.
-- **Muted:** a true silent soundscape state while retaining the operator volume control.
+- **Tactical Haptics:** disables the continuous drone while retaining camera-switch, chaos-trigger, rack-selection, battery-discharge, and Auditor-resolution feedback.
+- **Authoritative mute:** the dedicated speaker button is the only master mute control; soundscape selection never doubles as mute.
 - **Director Tour:** an 18-second autopilot path that sweeps through the rack canyon, arcs around the substation, and settles into an elevated overview.
 - **Volumetric atmosphere:** exponential depth fog, overhead grate lighting, and subtle directional god-ray shafts.
 - **Lidar scanline:** a continuous floor scan that highlights rack wireframes and GPU instances as it crosses the facility.
 - **Coolant floor:** transparent reflective metallic floor overlays with load-reactive flowing coolant bands and particles.
 - **Rack raycasting:** hover or click a rack frame to open a glass inspection card with rack ID, tier, core temperature, MW draw, and GPU count.
+- **Fluid command HUD:** left Tactical Rail, center viewport with bottom Chaos Suite/Swarm Terminal dock, and a stacked right telemetry column with the oscilloscope, impact ledger, and telemetry cards.
+- **Responsive verification:** `scripts/verify_responsive_layout.mjs` checks the three-column geometry, bounded panel regions, audio options, and stacked/medium breakpoints without network access.
 
 ## Calibrated operating model
 
@@ -122,6 +124,7 @@ Press **ENABLE AUDIO** once to satisfy browser autoplay policy. The native Web A
 - Metallic relay clicks for Arbiter curtailment.
 - Low-pass battery inverter rumble during large FFR injection.
 - Affirmative harmonic chime on Auditor convergence.
+- Tactical haptics for camera changes, chaos commands, and rack selections.
 - Master volume and mute controls with smoothed gain ramps.
 
 ### 60 FPS oscilloscope
@@ -176,6 +179,7 @@ launch.sh             universal local launcher
 scripts/
   dev.sh              compatibility alias for launch.sh
   offline_rebuild_check.sh  lock/path/offline verification harness
+  verify_responsive_layout.mjs  offline HUD geometry and mode verification
 Dockerfile             pinned multi-stage full-stack image
 Makefile               install, run, test, build, and rebuild-check commands
 ```
@@ -251,7 +255,15 @@ After dependencies have been installed once, the required offline gate is:
 make test
 ```
 
-`make test` runs all backend tests and the strict TypeScript/Vite production build. It performs no dependency installation and no network request.
+`make test` runs all backend tests, the offline responsive-layout check, and the strict TypeScript/Vite production build. It performs no dependency installation and no network request.
+
+The responsive-layout check can also be run independently:
+
+```bash
+make verify-responsive
+```
+
+It verifies `1920x1080`, `1440x900`, `1280x720`, two arbitrary desktop resizes, and the medium/stacked breakpoint boundaries. The latest run reported zero calculated panel intersections at every checked viewport.
 
 The full rebuildability audit is:
 
@@ -339,6 +351,7 @@ Telemetry envelopes contain grid physics, compute tiers, battery state, four-age
 ```bash
 make install       # optional explicit dependency setup
 make test          # complete offline test/build gate
+make verify-responsive  # desktop, resize, and breakpoint HUD geometry check
 make verify-rebuild  # manifest, path, lock, and offline audit
 make clean         # remove generated frontend/test output
 ```
