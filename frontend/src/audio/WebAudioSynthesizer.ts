@@ -4,6 +4,8 @@ export interface AudioTelemetryInput {
   batteryInjectionMw: number;
   auditorState: string;
   streamStatus: string;
+  sentinelAlert: boolean;
+  transformerTemperatureCelsius: number;
 }
 
 const clamp = (value: number, minimum: number, maximum: number): number => Math.min(Math.max(value, minimum), maximum);
@@ -66,7 +68,11 @@ export class WebAudioSynthesizer {
       oscillator.frequency.setTargetAtTime(frequency * harmonic, now, 0.045);
     });
 
-    const alarmActive = telemetry.streamStatus === 'LIVE' && telemetry.frequencyHz < 59.8;
+    const alarmActive = telemetry.streamStatus === 'LIVE' && (
+      telemetry.frequencyHz < 59.8
+      || telemetry.sentinelAlert
+      || telemetry.transformerTemperatureCelsius > 125
+    );
     const alarmTarget = alarmActive ? 0.105 : 0;
     this.alarmBus?.gain.setTargetAtTime(alarmTarget, now, alarmActive ? 0.028 : 0.16);
     this.alarmLfoDepth?.gain.setTargetAtTime(alarmActive ? 0.055 : 0, now, 0.04);

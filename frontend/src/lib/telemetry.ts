@@ -23,6 +23,7 @@ export interface TelemetrySnapshot {
   simulationTimeMs: number;
   streamHz: number;
   streamStatus: StreamStatus;
+  contingencyActive: boolean;
   loadPercent: number;
   frequencyHz: number;
   voltageKv: number;
@@ -51,6 +52,7 @@ export interface TelemetrySnapshot {
   throttledGpuCount: number;
   nadirHz: number;
   sentinelState: string;
+  sentinelAlert: boolean;
   arbiterState: string;
   dispatcherState: string;
   auditorState: string;
@@ -115,6 +117,7 @@ const emptyTelemetry = (streamStatus: StreamStatus): TelemetrySnapshot => ({
   simulationTimeMs: 0,
   streamHz: 20,
   streamStatus,
+  contingencyActive: false,
   loadPercent: 0,
   frequencyHz: 60,
   voltageKv: 345,
@@ -143,6 +146,7 @@ const emptyTelemetry = (streamStatus: StreamStatus): TelemetrySnapshot => ({
   throttledGpuCount: 0,
   nadirHz: 60,
   sentinelState: 'MONITORING',
+  sentinelAlert: false,
   arbiterState: 'STANDBY',
   dispatcherState: 'STANDBY',
   auditorState: 'MONITORING',
@@ -183,6 +187,7 @@ const mapEnvelope = (envelope: LiveTelemetryEnvelope, streamStatus: StreamStatus
     simulationTimeMs: envelope.simulation_time_ms,
     streamHz: envelope.stream_hz,
     streamStatus,
+    contingencyActive: envelope.grid.contingency_active,
     loadPercent,
     frequencyHz: envelope.grid.frequency_hz,
     voltageKv: envelope.grid.voltage_kv,
@@ -211,6 +216,7 @@ const mapEnvelope = (envelope: LiveTelemetryEnvelope, streamStatus: StreamStatus
     throttledGpuCount: envelope.compute.throttled_gpu_count,
     nadirHz: envelope.grid.nadir_hz,
     sentinelState: envelope.agents.sentinel_state,
+    sentinelAlert: envelope.agents.sentinel_alert,
     arbiterState: envelope.agents.arbiter_state,
     dispatcherState: envelope.agents.dispatcher_state,
     auditorState: envelope.agents.auditor_state,

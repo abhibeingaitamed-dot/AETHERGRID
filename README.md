@@ -1,6 +1,6 @@
 # AETHERGRID // Mission Deck
 
-AETHERGRID is a cinematic cyber-physical command surface for co-orchestrating hyperscale AI compute with high-voltage grid infrastructure. Turn 2 adds a 1 kHz internal microgrid solver, a 20 Hz FastAPI telemetry runtime, and an in-process four-agent response swarm behind a bidirectional WebSocket bridge.
+AETHERGRID is a cinematic cyber-physical command surface for co-orchestrating hyperscale AI compute with high-voltage grid infrastructure. Turn 3 adds a native Web Audio feedback graph, a 60 FPS laboratory oscilloscope, operator-triggered chaos controls, and a live four-agent terminal on top of the 1 kHz solver and 20 Hz WebSocket runtime.
 
 ## Turn 2 capabilities
 
@@ -15,6 +15,10 @@ AETHERGRID is a cinematic cyber-physical command surface for co-orchestrating hy
 - **Live bidirectional WebSocket telemetry** at `/ws/telemetry` and `/api/v1/ws/telemetry`, publishing validated grid, cluster, battery, and swarm state at 20 Hz while accepting `ping`, `contingency`, and `reset` commands.
 - **Numerical microgrid physics** using the normalized swing equation with 60 Hz nominal frequency, a 1,000 MW base, 3.5 s inertia, 1.5 pu/Hz load damping, millisecond integration, generator trips capped at 350 MW, 150 MW aggregate facility-equivalent DVFS shedding, and 200 MW sub-cycle battery response.
 - **Four autonomous agents**: Sentinel, Arbiter, Dispatcher, and Auditor. The default Arbiter cost curve protects Tier 1 first by allocating lower blended SLA/checkpoint cost tiers before higher-priority workloads.
+- **Procedural Web Audio** gated by an explicit Enable Audio control, with a 60 Hz harmonic AC bed, frequency-reactive pitch, dual-tone emergency siren, relay clicks, battery-discharge rumble, stabilization chime, master volume, mute, and smoothed gain envelopes.
+- **60 FPS Canvas oscilloscope** rendering the live backend voltage/frequency waveform with phosphor persistence, millihertz reticles, millisecond divisions, and cyan/amber/red state transitions.
+- **Chaos Suite** controls for a 350 MW generator trip, 240 MW transformer overload, 260 MW renewable drop, and full system reset. Every action is sent as a typed bidirectional WebSocket command.
+- **Live Swarm Terminal** with chronological millisecond-stamped agent badges, autoscroll, manual pause, and the numerical Arbiter/Dispatcher curtailment rationale.
 
 The browser no longer generates telemetry locally. It connects to the backend WebSocket, automatically reconnects with bounded exponential backoff, and maps the live cluster load directly to the Three.js shader uniform driving busbar velocity, bloom, particle scale, and rack thermal emission.
 
@@ -33,8 +37,9 @@ backend/
   tests/             physics, swarm, WebSocket, health, readiness, and CORS tests
 frontend/
   src/
+    audio/           native Web Audio synthesis graph and React hook
     scene/           Three.js digital twin and GLSL shaders
-    components/      HUD, telemetry cards, and scene host
+    components/      HUD, oscilloscope, chaos suite, terminal, and scene host
     lib/             live WebSocket telemetry client and formatting
     App.tsx          Mission Deck composition
     styles.css       cinematic HUD visual system
@@ -123,8 +128,8 @@ Copy `.env.example` when a local environment file is needed:
 cp .env.example .env
 ```
 
-Supported values are `AETHERGRID_ENVIRONMENT`, `AETHERGRID_ALLOWED_ORIGINS` (comma-separated), `AETHERGRID_API_PORT`, `AETHERGRID_LOAD_DAMPING_PU_PER_HZ`, `AETHERGRID_AUTO_CONTINGENCY_AFTER_S`, and `AETHERGRID_AUTO_CONTINGENCY_TRIP_MW`. No secrets are needed for Turn 2.
+Supported values are `AETHERGRID_ENVIRONMENT`, `AETHERGRID_ALLOWED_ORIGINS` (comma-separated), `AETHERGRID_API_PORT`, `AETHERGRID_LOAD_DAMPING_PU_PER_HZ`, `AETHERGRID_AUTO_CONTINGENCY_AFTER_S`, `AETHERGRID_AUTO_CONTINGENCY_TRIP_MW`, `AETHERGRID_TRANSFORMER_OVERLOAD_MW`, and `AETHERGRID_RENEWABLE_DROP_MW`. No secrets are needed for Turn 3.
 
 ## UI controls
 
-The left-side Camera Rig selects the three cinematic camera poses. The operator can also move the pointer across the viewport for subtle camera parallax. The digital twin reacts continuously to the live physics stream: busbar velocity, bloom intensity, rack thermal palette, heat shimmer density, particle scale, and HUD meters all follow backend-computed cluster load and grid balance.
+The left-side Camera Rig selects the three cinematic camera poses. The operator can also move the pointer across the viewport for subtle camera parallax. Press **ENABLE AUDIO** once after loading to unlock the native browser audio graph. The **Chaos Suite** sends typed contingency commands through the live bridge; the oscilloscope, digital twin shaders, alarm synthesis, HUD, and terminal all react to the same backend simulation frame. The **PAUSE** control in the Swarm Terminal freezes autoscroll while retaining the full bounded event history.
