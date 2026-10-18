@@ -14,6 +14,8 @@ class Settings(BaseModel):
     load_damping_pu_per_hz: float = Field(default=1.5, gt=0)
     auto_contingency_after_s: Optional[float] = Field(default=3.0, ge=0)
     auto_contingency_trip_mw: float = Field(default=320.0, gt=0, le=350)
+    transformer_overload_mw: float = Field(default=240.0, gt=0, le=250)
+    renewable_drop_mw: float = Field(default=260.0, gt=0, le=300)
     allowed_origins: List[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"]
     )
@@ -39,6 +41,8 @@ class Settings(BaseModel):
                 else defaults.auto_contingency_after_s
             ),
             auto_contingency_trip_mw=float(os.getenv("AETHERGRID_AUTO_CONTINGENCY_TRIP_MW", defaults.auto_contingency_trip_mw)),
+            transformer_overload_mw=float(os.getenv("AETHERGRID_TRANSFORMER_OVERLOAD_MW", defaults.transformer_overload_mw)),
+            renewable_drop_mw=float(os.getenv("AETHERGRID_RENEWABLE_DROP_MW", defaults.renewable_drop_mw)),
         )
 
 

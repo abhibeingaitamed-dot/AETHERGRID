@@ -24,6 +24,8 @@ simulation_runtime = SimulationRuntime(
         publication_hz=20.0,
         auto_contingency_after_s=settings.auto_contingency_after_s,
         auto_contingency_trip_mw=settings.auto_contingency_trip_mw,
+        transformer_overload_mw=settings.transformer_overload_mw,
+        renewable_drop_mw=settings.renewable_drop_mw,
     ),
 )
 

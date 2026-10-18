@@ -26,7 +26,10 @@ class GridTelemetry(BaseModel):
     balance_mw: float
     voltage_kv: float
     generator_trip_mw: float
+    transformer_overload_mw: float
+    renewable_drop_mw: float
     nadir_hz: float
+    transformer_temperature_celsius: float
     base_capacity_mw: float
     inertia_constant_s: float
     load_damping_pu_per_hz: float
@@ -99,8 +102,10 @@ class TelemetryEnvelope(BaseModel):
 class CommandEnvelope(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    type: Literal["ping", "contingency", "reset"]
+    type: Literal["ping", "contingency", "transformer_overload", "renewable_drop", "reset"]
     trip_mw: Optional[float] = Field(default=None, ge=0, le=350)
+    overload_mw: Optional[float] = Field(default=None, ge=0, le=250)
+    drop_mw: Optional[float] = Field(default=None, ge=0, le=300)
     request_id: Optional[str] = None
 
 

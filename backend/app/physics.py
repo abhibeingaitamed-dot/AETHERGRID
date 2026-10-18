@@ -86,6 +86,8 @@ class PhysicsConfig:
     load_damping_pu_per_hz: float = 1.5
     regional_static_load_mw: float = 150.0
     max_generator_trip_mw: float = 350.0
+    max_transformer_overload_mw: float = 250.0
+    max_renewable_drop_mw: float = 300.0
     max_battery_injection_mw: float = 200.0
     battery_response_delay_s: float = 0.005
     dvfs_response_window_s: float = 0.080
@@ -107,6 +109,8 @@ class PhysicsConfig:
             raise ValueError("load_damping_pu_per_hz must be non-negative")
         if self.max_generator_trip_mw <= 0 or self.max_battery_injection_mw <= 0:
             raise ValueError("contingency and battery limits must be positive")
+        if self.max_transformer_overload_mw <= 0 or self.max_renewable_drop_mw <= 0:
+            raise ValueError("chaos disturbance limits must be positive")
         if self.battery_response_delay_s < 0 or self.dvfs_response_window_s <= 0:
             raise ValueError("response times must be valid")
         if self.recovery_rocof_threshold_hz_per_second <= 0 or self.recovery_balance_tolerance_mw < 0:
@@ -153,9 +157,12 @@ class PhysicsSnapshot:
     voltage_kv: float
     thermal_celsius: float
     coolant_celsius: float
+    transformer_temperature_celsius: float
     nadir_hz: float
     recovery_time_s: Optional[float]
     contingency_active: bool
+    transformer_overload_mw: float = 0.0
+    renewable_drop_mw: float = 0.0
     tier_shed_mw: Mapping[str, float] = field(default_factory=dict)
     throttled_gpu_count: int = 0
 
@@ -195,6 +202,8 @@ class MicrogridPhysicsEngine:
         self._frequency_hz = self.config.nominal_frequency_hz
         self._rocof_hz_per_second = 0.0
         self._generator_trip_mw = 0.0
+        self._transformer_overload_mw = 0.0
+        self._renewable_drop_mw = 0.0
         self._contingency_started_at_s: Optional[float] = None
         self._recovery_time_s: Optional[float] = None
         self._frequency_below_recovery_threshold = False
@@ -223,16 +232,36 @@ class MicrogridPhysicsEngine:
     def apply_generator_trip(self, trip_mw: float) -> float:
         requested_trip = max(0.0, trip_mw)
         applied_trip = min(requested_trip, self.config.max_generator_trip_mw)
-        if applied_trip > 0 and self._generator_trip_mw == 0:
-            self._contingency_started_at_s = self._time_s
-            self._recovery_time_s = None
-            self._nadir_hz = self._frequency_hz
+        if applied_trip > 0:
+            self._start_contingency()
         self._generator_trip_mw = applied_trip
         self._rocof_hz_per_second = self.swing_rocof(self._current_power_balance_mw())
         return applied_trip
 
+    def apply_transformer_overload(self, overload_mw: float) -> float:
+        applied_overload = min(max(0.0, overload_mw), self.config.max_transformer_overload_mw)
+        if applied_overload > 0:
+            self._start_contingency()
+        self._transformer_overload_mw = applied_overload
+        self._rocof_hz_per_second = self.swing_rocof(self._current_power_balance_mw())
+        return applied_overload
+
+    def apply_renewable_drop(self, drop_mw: float) -> float:
+        applied_drop = min(max(0.0, drop_mw), self.config.max_renewable_drop_mw)
+        if applied_drop > 0:
+            self._start_contingency()
+        self._renewable_drop_mw = applied_drop
+        self._rocof_hz_per_second = self.swing_rocof(self._current_power_balance_mw())
+        return applied_drop
+
     def clear_generator_trip(self) -> None:
         self._generator_trip_mw = 0.0
+        self._rocof_hz_per_second = self.swing_rocof(self._current_power_balance_mw())
+
+    def clear_chaos_disturbances(self) -> None:
+        self._generator_trip_mw = 0.0
+        self._transformer_overload_mw = 0.0
+        self._renewable_drop_mw = 0.0
         self._rocof_hz_per_second = self.swing_rocof(self._current_power_balance_mw())
 
     def apply_control(self, battery_injection_mw: float, tier_shed_mw: Mapping[str, float]) -> None:
@@ -256,7 +285,13 @@ class MicrogridPhysicsEngine:
         tier_shed = dict(self._control.tier_current_mw)
         compute_shed = sum(tier_shed.values())
         compute_load = self.config.total_compute_nominal_mw - compute_shed
-        generation = self.config.base_capacity_mw - self._generator_trip_mw
+        generation = max(
+            0.0,
+            self.config.base_capacity_mw
+            - self._generator_trip_mw
+            - self._transformer_overload_mw
+            - self._renewable_drop_mw,
+        )
         demand = self.config.regional_static_load_mw + compute_load
         power_balance = generation + self._control.battery_current_mw - demand
         throttled_gpus = 0
@@ -266,6 +301,13 @@ class MicrogridPhysicsEngine:
         load_ratio = compute_load / self.config.total_compute_nominal_mw
         voltage = 345.0 - abs(power_balance) / self.config.base_capacity_mw * 13.0
         thermal = 53.0 + load_ratio * 32.0 + min(abs(self._rocof_hz_per_second) * 0.35, 5.0)
+        transformer_temperature = (
+            68.0
+            + load_ratio * 35.0
+            + self._transformer_overload_mw * 0.38
+            + self._renewable_drop_mw * 0.04
+            + min(abs(self._rocof_hz_per_second) * 0.8, 8.0)
+        )
         coolant = 17.0 + load_ratio * 8.0
         return PhysicsSnapshot(
             time_s=self._time_s,
@@ -279,12 +321,19 @@ class MicrogridPhysicsEngine:
             battery_injection_mw=self._control.battery_current_mw,
             power_balance_mw=power_balance,
             generator_trip_mw=self._generator_trip_mw,
+            transformer_overload_mw=self._transformer_overload_mw,
+            renewable_drop_mw=self._renewable_drop_mw,
+            transformer_temperature_celsius=transformer_temperature,
             voltage_kv=voltage,
             thermal_celsius=thermal,
             coolant_celsius=coolant,
             nadir_hz=self._nadir_hz,
             recovery_time_s=self._recovery_time_s,
-            contingency_active=self._generator_trip_mw > 0,
+            contingency_active=(
+                self._generator_trip_mw > 0
+                or self._transformer_overload_mw > 0
+                or self._renewable_drop_mw > 0
+            ),
             tier_shed_mw=tier_shed,
             throttled_gpu_count=throttled_gpus,
         )
@@ -343,9 +392,22 @@ class MicrogridPhysicsEngine:
     def _current_power_balance_mw(self) -> float:
         compute_shed = sum(self._control.tier_current_mw.values())
         compute_load = self.config.total_compute_nominal_mw - compute_shed
-        generation = self.config.base_capacity_mw - self._generator_trip_mw
+        generation = max(
+            0.0,
+            self.config.base_capacity_mw
+            - self._generator_trip_mw
+            - self._transformer_overload_mw
+            - self._renewable_drop_mw,
+        )
         demand = self.config.regional_static_load_mw + compute_load
         return generation + self._control.battery_current_mw - demand
+
+    def _start_contingency(self) -> None:
+        if self._contingency_started_at_s is None:
+            self._contingency_started_at_s = self._time_s
+            self._recovery_time_s = None
+            self._nadir_hz = self._frequency_hz
+            self._frequency_below_recovery_threshold = False
 
 
 def iter_tiers(config: PhysicsConfig) -> Iterable[TierSpec]:

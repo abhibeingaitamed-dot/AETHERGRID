@@ -66,3 +66,28 @@ def test_calibration_constants_are_explicit_and_exact() -> None:
     assert config.load_damping_pu_per_hz == 1.5
     assert config.total_gpu_count == 12_000
     assert config.total_compute_max_shed_mw == 150.0
+
+
+def test_transformer_overload_produces_thermal_stress_and_power_deficit() -> None:
+    engine = MicrogridPhysicsEngine()
+
+    applied = engine.apply_transformer_overload(400.0)
+    snapshot = engine.advance(0.010)
+
+    assert applied == 250.0
+    assert snapshot.transformer_overload_mw == 250.0
+    assert snapshot.transformer_temperature_celsius > 150.0
+    assert snapshot.power_balance_mw < 0.0
+    assert snapshot.contingency_active
+
+
+def test_renewable_drop_is_capped_and_updates_generation_domain() -> None:
+    engine = MicrogridPhysicsEngine()
+
+    applied = engine.apply_renewable_drop(400.0)
+    snapshot = engine.advance(0.010)
+
+    assert applied == 300.0
+    assert snapshot.renewable_drop_mw == 300.0
+    assert snapshot.generation_mw == 700.0
+    assert snapshot.rocof_hz_per_second < -2.0

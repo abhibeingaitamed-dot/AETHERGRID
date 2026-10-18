@@ -27,6 +27,8 @@ class RuntimeConfig:
     publication_hz: float = 20.0
     auto_contingency_after_s: Optional[float] = 3.0
     auto_contingency_trip_mw: float = 320.0
+    transformer_overload_mw: float = 240.0
+    renewable_drop_mw: float = 260.0
 
 
 class SimulationRuntime:
@@ -117,6 +119,30 @@ class SimulationRuntime:
             self.reset()
             return CommandAck(type="ack", command="reset", request_id=command.request_id, accepted=True, message="physics engine and swarm reset")
 
+        if command.type == "transformer_overload":
+            overload_mw = command.overload_mw if command.overload_mw is not None else self.runtime_config.transformer_overload_mw
+            applied = self.engine.apply_transformer_overload(overload_mw)
+            self._auto_contingency_triggered = True
+            return CommandAck(
+                type="ack",
+                command="transformer_overload",
+                request_id=command.request_id,
+                accepted=True,
+                message=f"transformer overload armed at {applied:.3f} MW derating",
+            )
+
+        if command.type == "renewable_drop":
+            drop_mw = command.drop_mw if command.drop_mw is not None else self.runtime_config.renewable_drop_mw
+            applied = self.engine.apply_renewable_drop(drop_mw)
+            self._auto_contingency_triggered = True
+            return CommandAck(
+                type="ack",
+                command="renewable_drop",
+                request_id=command.request_id,
+                accepted=True,
+                message=f"renewable drop armed at {applied:.3f} MW loss",
+            )
+
         trip_mw = command.trip_mw if command.trip_mw is not None else self.runtime_config.auto_contingency_trip_mw
         applied = self.engine.apply_generator_trip(trip_mw)
         self._auto_contingency_triggered = True
@@ -201,7 +227,10 @@ class SimulationRuntime:
                 balance_mw=snapshot.power_balance_mw,
                 voltage_kv=snapshot.voltage_kv,
                 generator_trip_mw=snapshot.generator_trip_mw,
+                transformer_overload_mw=snapshot.transformer_overload_mw,
+                renewable_drop_mw=snapshot.renewable_drop_mw,
                 nadir_hz=snapshot.nadir_hz,
+                transformer_temperature_celsius=snapshot.transformer_temperature_celsius,
                 base_capacity_mw=self.physics_config.base_capacity_mw,
                 inertia_constant_s=self.physics_config.inertia_constant_s,
                 load_damping_pu_per_hz=self.physics_config.load_damping_pu_per_hz,
