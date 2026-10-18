@@ -24,7 +24,7 @@ export function App(): ReactElement {
       <div className="facility-caption" aria-hidden="true"><span>FACILITY DIGITAL TWIN</span><strong>AETHERGRID / GRID NODE 07</strong></div>
 
       <div className="hud-layer">
-        <TelemetryHeader telemetry={telemetry} audioEnabled={audio.enabled} audioMuted={audio.muted} audioVolume={audio.volume} onEnableAudio={() => void audio.enable()} onToggleMute={audio.toggleMute} onVolumeChange={audio.setVolume} />
+        <TelemetryHeader telemetry={telemetry} audioEnabled={audio.enabled} audioMuted={audio.muted} audioVolume={audio.volume} soundscape={audio.soundscape} onEnableAudio={() => void audio.enable()} onToggleMute={audio.toggleMute} onVolumeChange={audio.setVolume} onSoundscapeChange={audio.setSoundscape} />
         <TacticalRail telemetry={telemetry} cameraMode={cameraMode} onCameraModeChange={setCameraMode} />
         <Oscilloscope telemetry={telemetry} />
         <ChaosSuite telemetry={telemetry} sendCommand={sendCommand} />

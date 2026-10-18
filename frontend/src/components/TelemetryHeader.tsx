@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactElement } from 'react';
+import type { SoundscapeMode } from '../audio/WebAudioSynthesizer';
 import { formatNumber, formatUtcMilliseconds, type TelemetrySnapshot } from '../lib/telemetry';
 
 interface TelemetryHeaderProps {
@@ -6,12 +7,14 @@ interface TelemetryHeaderProps {
   audioEnabled: boolean;
   audioMuted: boolean;
   audioVolume: number;
+  soundscape: SoundscapeMode;
   onEnableAudio: () => void;
   onToggleMute: () => void;
   onVolumeChange: (value: number) => void;
+  onSoundscapeChange: (soundscape: SoundscapeMode) => void;
 }
 
-export function TelemetryHeader({ telemetry, audioEnabled, audioMuted, audioVolume, onEnableAudio, onToggleMute, onVolumeChange }: TelemetryHeaderProps): ReactElement {
+export function TelemetryHeader({ telemetry, audioEnabled, audioMuted, audioVolume, soundscape, onEnableAudio, onToggleMute, onVolumeChange, onSoundscapeChange }: TelemetryHeaderProps): ReactElement {
   const [utcNow, setUtcNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -71,6 +74,14 @@ export function TelemetryHeader({ telemetry, audioEnabled, audioMuted, audioVolu
             <label className="volume-control">
               <span>VOL</span>
               <input aria-label="Master audio volume" type="range" min="0" max="1" step="0.01" value={audioVolume} onChange={(event) => onVolumeChange(Number(event.target.value))} />
+            </label>
+            <label className="soundscape-control">
+              <span>SCENE</span>
+              <select aria-label="Audio soundscape" value={soundscape} onChange={(event) => onSoundscapeChange(event.target.value as SoundscapeMode)}>
+                <option value="cinematic">CINEMATIC AMBIENT</option>
+                <option value="minimalist">MINIMALIST HAPTICS</option>
+                <option value="muted">MUTED</option>
+              </select>
             </label>
           </>
         )}

@@ -423,6 +423,27 @@ button {
   accent-color: var(--cyan);
 }
 
+.soundscape-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #6d97a9;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8px;
+}
+
+.soundscape-control select {
+  max-width: 128px;
+  min-height: 26px;
+  padding: 0 5px;
+  border: 1px solid rgba(0, 211, 255, 0.35);
+  background: rgba(3, 13, 24, 0.94);
+  color: #9eeafa;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 7px;
+  letter-spacing: 0.04em;
+}
+
 .signal-bars {
   display: inline-flex;
   align-items: flex-end;
