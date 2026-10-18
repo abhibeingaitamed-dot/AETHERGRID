@@ -4,7 +4,7 @@
 
 AETHERGRID is a full-stack cyber-physical war room that couples a normalized per-unit microgrid model, a four-agent response swarm, a live bidirectional WebSocket bridge, and a cinematic Three.js digital twin. Operators can inject controlled contingencies, observe millisecond-scale frequency behavior, hear the response state, and quantify the financial and carbon value of every successful intervention.
 
-Turn 4 completes the platform with a financial/SLA/carbon ledger, BESS lifecycle accounting, a universal single-command launcher, and an offline rebuild verification harness.
+Turn 5 adds a warm cinematic soundscape selector, cinematic Director Tour autopilot, volumetric facility atmosphere, sweeping lidar illumination, transparent coolant-floor simulation, and interactive rack raycasting.
 
 ## Executive value proposition
 
@@ -28,11 +28,22 @@ flowchart LR
     W --> H[React Mission Deck]
     H --> T[Three.js Digital Twin\nGLSL energy + thermal shaders]
     H --> O[60 FPS Canvas Oscilloscope]
-    H --> S[Native Web Audio\nAC hum · alarms · response cues]
+    H --> S[Native Web Audio\nambient · brass swells · haptics]
     H --> L[Live Swarm Terminal\nchronological event log]
 ```
 
 The same backend frame drives the physics, the swarm, the impact ledger, the HUD, the 3D shader uniforms, the oscilloscope, and the audio engine. React state updates at the telemetry cadence; the Three.js and Canvas render loops remain independent for smooth visual output.
+
+## Turn 5 cinematic upgrades
+
+- **Cinematic Ambient:** warm filtered sine/triangle drone, stereo chorus, resonant low-pass shaping, and soft tape saturation.
+- **Minimalist Haptics:** response clicks, distant battery rumble, and recovery chord without the continuous drone.
+- **Muted:** a true silent soundscape state while retaining the operator volume control.
+- **Director Tour:** an 18-second autopilot path that sweeps through the rack canyon, arcs around the substation, and settles into an elevated overview.
+- **Volumetric atmosphere:** exponential depth fog, overhead grate lighting, and subtle directional god-ray shafts.
+- **Lidar scanline:** a continuous floor scan that highlights rack wireframes and GPU instances as it crosses the facility.
+- **Coolant floor:** transparent reflective metallic floor overlays with load-reactive flowing coolant bands and particles.
+- **Rack raycasting:** hover or click a rack frame to open a glass inspection card with rack ID, tier, core temperature, MW draw, and GPU count.
 
 ## Calibrated operating model
 
