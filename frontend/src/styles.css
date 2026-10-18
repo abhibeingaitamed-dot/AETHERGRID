@@ -454,6 +454,7 @@ button {
 
 .oscilloscope-panel,
 .chaos-suite,
+.impact-panel,
 .agent-terminal {
   position: absolute;
   overflow: hidden;
@@ -682,6 +683,233 @@ button {
   width: 530px;
   height: 184px;
   padding: 12px 13px 9px;
+}
+
+.impact-panel {
+  top: 308px;
+  right: 24px;
+  display: grid;
+  grid-template-rows: auto auto auto auto;
+  gap: 9px;
+  width: 405px;
+  min-height: 286px;
+  padding: 13px;
+}
+
+.impact-panel::before {
+  background: #5cebc0;
+  box-shadow: 0 0 13px #5cebc0;
+}
+
+.impact-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.impact-heading h2 {
+  margin: 0;
+  color: #e9fbff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+}
+
+.impact-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #62edc3;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 7px;
+  letter-spacing: 0.06em;
+}
+
+.impact-state i {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 7px currentColor;
+}
+
+.impact-state.exposure {
+  color: var(--red);
+}
+
+.impact-state.armed {
+  color: var(--amber);
+}
+
+.capital-band {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid rgba(92, 235, 192, 0.2);
+  background: linear-gradient(110deg, rgba(14, 105, 89, 0.27), rgba(3, 21, 28, 0.35));
+}
+
+.capital-band > div,
+.capital-reference {
+  display: grid;
+  gap: 4px;
+}
+
+.capital-band span,
+.impact-column-title span,
+.sla-row span,
+.carbon-metric span,
+.battery-ledger-heading span,
+.battery-metrics span {
+  color: #6f98a5;
+  font-size: 7px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+}
+
+.capital-band strong {
+  color: #d3ffef;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.06em;
+}
+
+.capital-reference {
+  text-align: right;
+}
+
+.capital-reference b {
+  color: #a4ddcf;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.capital-reference small,
+.impact-caption {
+  color: #4d7786;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 7px;
+  letter-spacing: 0.04em;
+}
+
+.impact-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.impact-column {
+  min-width: 0;
+}
+
+.impact-column-title,
+.battery-ledger-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  margin-bottom: 8px;
+}
+
+.impact-column-title strong,
+.battery-ledger-heading strong {
+  color: #bff9e8;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.sla-list {
+  display: grid;
+  gap: 6px;
+}
+
+.sla-row {
+  display: grid;
+  gap: 3px;
+}
+
+.sla-row > div:first-child {
+  display: flex;
+  justify-content: space-between;
+}
+
+.sla-row b,
+.carbon-metric b,
+.battery-metrics b {
+  color: #a5d6de;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8px;
+  font-weight: 400;
+}
+
+.sla-track,
+.carbon-bar,
+.battery-track {
+  height: 3px;
+  overflow: hidden;
+  background: rgba(74, 112, 129, 0.25);
+}
+
+.sla-track i,
+.carbon-bar i,
+.battery-track i {
+  display: block;
+  height: 100%;
+  background: #5cebc0;
+  box-shadow: 0 0 9px #5cebc0;
+  transition: width 300ms ease;
+}
+
+.carbon-metric {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 7px;
+}
+
+.carbon-bar {
+  margin: 10px 0 8px;
+}
+
+.carbon-bar i {
+  background: #80e7bd;
+  box-shadow: 0 0 9px #80e7bd;
+}
+
+.battery-ledger {
+  padding-top: 8px;
+  border-top: 1px solid rgba(103, 190, 220, 0.14);
+}
+
+.battery-ledger-heading {
+  margin-bottom: 7px;
+}
+
+.battery-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+}
+
+.battery-metrics > div {
+  display: grid;
+  gap: 3px;
+}
+
+.battery-track {
+  margin-top: 8px;
+}
+
+.battery-track i {
+  background: #5ab4ff;
+  box-shadow: 0 0 9px #5ab4ff;
 }
 
 .agent-terminal::before {
@@ -1377,12 +1605,18 @@ button {
   }
 
   .chaos-suite,
+  .impact-panel,
   .agent-terminal {
     left: 250px;
   }
 
   .chaos-suite {
     width: 300px;
+  }
+
+  .impact-panel {
+    right: 16px;
+    width: 342px;
   }
 
   .agent-terminal {
@@ -1415,6 +1649,7 @@ button {
 
   .oscilloscope-panel,
   .chaos-suite,
+  .impact-panel,
   .agent-terminal {
     position: relative;
     top: auto;
@@ -1432,8 +1667,13 @@ button {
     order: 4;
   }
 
-  .agent-terminal {
+  .impact-panel {
     order: 5;
+    min-height: 286px;
+  }
+
+  .agent-terminal {
+    order: 6;
     height: 200px;
   }
 
@@ -1479,7 +1719,7 @@ button {
   .telemetry-dock {
     display: grid;
     grid-template-columns: 1fr;
-    order: 6;
+    order: 7;
   }
 
   .signal-card {

@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from 'react';
 import { AgentTerminal } from './components/AgentTerminal';
 import { ChaosSuite } from './components/ChaosSuite';
+import { ImpactPanel } from './components/ImpactPanel';
 import { Oscilloscope } from './components/Oscilloscope';
 import { SceneCanvas } from './components/SceneCanvas';
 import { TacticalRail } from './components/TacticalRail';
@@ -27,6 +28,7 @@ export function App(): ReactElement {
         <TacticalRail telemetry={telemetry} cameraMode={cameraMode} onCameraModeChange={setCameraMode} />
         <Oscilloscope telemetry={telemetry} />
         <ChaosSuite telemetry={telemetry} sendCommand={sendCommand} />
+        <ImpactPanel telemetry={telemetry} />
         <AgentTerminal telemetry={telemetry} />
         <TelemetryPanels telemetry={telemetry} />
         <footer className="hud-footer">

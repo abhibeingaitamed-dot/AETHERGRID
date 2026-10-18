@@ -18,6 +18,37 @@ export interface AgentLogEntry {
   message: string;
 }
 
+export interface FinancialImpact {
+  outageBenchmarkUsd: number;
+  preventedOutages: number;
+  capitalPreservedUsd: number;
+  activeOutageExposureUsd: number;
+  avoidedSlaPenaltiesUsd: number;
+  avoidedSlaByTierUsd: Record<string, number>;
+  curtailmentCostUsd: number;
+  lastEventAvoidedSlaUsd: number;
+  lastEventCurtailedMw: number;
+  lastEventRecoveryMs: number | null;
+}
+
+export interface EnvironmentalImpact {
+  avoidedDieselEnergyMwh: number;
+  avoidedCarbonKg: number;
+  avoidedCarbonTonnes: number;
+  dieselCarbonIntensityKgPerKwh: number;
+}
+
+export interface BatteryLifecycle {
+  roundTripEfficiencyPercent: number;
+  nominalCapacityMwh: number;
+  energyRemainingMwh: number;
+  energyDeliveredMwh: number;
+  equivalentCycles: number;
+  stateOfHealthPercent: number;
+  cycleLife: number;
+  endOfLifeSohPercent: number;
+}
+
 export interface TelemetrySnapshot {
   elapsedSeconds: number;
   simulationTimeMs: number;
@@ -58,6 +89,9 @@ export interface TelemetrySnapshot {
   auditorState: string;
   auditorDetail: string;
   gridState: 'NOMINAL' | 'ELEVATED' | 'CRITICAL';
+  financial: FinancialImpact;
+  environmental: EnvironmentalImpact;
+  batteryLifecycle: BatteryLifecycle;
   agentLogs: AgentLogEntry[];
 }
 
@@ -108,6 +142,34 @@ interface LiveTelemetryEnvelope {
     auditor_detail: string;
   };
   events: AgentLogEntry[];
+  financial: {
+    outage_benchmark_usd: number;
+    prevented_outages: number;
+    capital_preserved_usd: number;
+    active_outage_exposure_usd: number;
+    avoided_sla_penalties_usd: number;
+    avoided_sla_by_tier_usd: Record<string, number>;
+    curtailment_cost_usd: number;
+    last_event_avoided_sla_usd: number;
+    last_event_curtailed_mw: number;
+    last_event_recovery_ms: number | null;
+  };
+  environmental: {
+    avoided_diesel_energy_mwh: number;
+    avoided_carbon_kg: number;
+    avoided_carbon_tonnes: number;
+    diesel_carbon_intensity_kg_per_kwh: number;
+  };
+  battery_lifecycle: {
+    round_trip_efficiency_percent: number;
+    nominal_capacity_mwh: number;
+    energy_remaining_mwh: number;
+    energy_delivered_mwh: number;
+    equivalent_cycles: number;
+    state_of_health_percent: number;
+    cycle_life: number;
+    end_of_life_soh_percent: number;
+  };
 }
 
 const TOTAL_RACKS = 48;
@@ -152,6 +214,34 @@ const emptyTelemetry = (streamStatus: StreamStatus): TelemetrySnapshot => ({
   auditorState: 'MONITORING',
   auditorDetail: 'waiting for telemetry stream',
   gridState: 'NOMINAL',
+  financial: {
+    outageBenchmarkUsd: 10_000_000,
+    preventedOutages: 0,
+    capitalPreservedUsd: 0,
+    activeOutageExposureUsd: 0,
+    avoidedSlaPenaltiesUsd: 0,
+    avoidedSlaByTierUsd: {},
+    curtailmentCostUsd: 0,
+    lastEventAvoidedSlaUsd: 0,
+    lastEventCurtailedMw: 0,
+    lastEventRecoveryMs: null,
+  },
+  environmental: {
+    avoidedDieselEnergyMwh: 0,
+    avoidedCarbonKg: 0,
+    avoidedCarbonTonnes: 0,
+    dieselCarbonIntensityKgPerKwh: 0.74,
+  },
+  batteryLifecycle: {
+    roundTripEfficiencyPercent: 92,
+    nominalCapacityMwh: 400,
+    energyRemainingMwh: 400,
+    energyDeliveredMwh: 0,
+    equivalentCycles: 0,
+    stateOfHealthPercent: 100,
+    cycleLife: 4_000,
+    endOfLifeSohPercent: 80,
+  },
   agentLogs: [],
 });
 
@@ -222,6 +312,34 @@ const mapEnvelope = (envelope: LiveTelemetryEnvelope, streamStatus: StreamStatus
     auditorState: envelope.agents.auditor_state,
     auditorDetail: envelope.agents.auditor_detail,
     gridState,
+    financial: {
+      outageBenchmarkUsd: envelope.financial.outage_benchmark_usd,
+      preventedOutages: envelope.financial.prevented_outages,
+      capitalPreservedUsd: envelope.financial.capital_preserved_usd,
+      activeOutageExposureUsd: envelope.financial.active_outage_exposure_usd,
+      avoidedSlaPenaltiesUsd: envelope.financial.avoided_sla_penalties_usd,
+      avoidedSlaByTierUsd: envelope.financial.avoided_sla_by_tier_usd,
+      curtailmentCostUsd: envelope.financial.curtailment_cost_usd,
+      lastEventAvoidedSlaUsd: envelope.financial.last_event_avoided_sla_usd,
+      lastEventCurtailedMw: envelope.financial.last_event_curtailed_mw,
+      lastEventRecoveryMs: envelope.financial.last_event_recovery_ms,
+    },
+    environmental: {
+      avoidedDieselEnergyMwh: envelope.environmental.avoided_diesel_energy_mwh,
+      avoidedCarbonKg: envelope.environmental.avoided_carbon_kg,
+      avoidedCarbonTonnes: envelope.environmental.avoided_carbon_tonnes,
+      dieselCarbonIntensityKgPerKwh: envelope.environmental.diesel_carbon_intensity_kg_per_kwh,
+    },
+    batteryLifecycle: {
+      roundTripEfficiencyPercent: envelope.battery_lifecycle.round_trip_efficiency_percent,
+      nominalCapacityMwh: envelope.battery_lifecycle.nominal_capacity_mwh,
+      energyRemainingMwh: envelope.battery_lifecycle.energy_remaining_mwh,
+      energyDeliveredMwh: envelope.battery_lifecycle.energy_delivered_mwh,
+      equivalentCycles: envelope.battery_lifecycle.equivalent_cycles,
+      stateOfHealthPercent: envelope.battery_lifecycle.state_of_health_percent,
+      cycleLife: envelope.battery_lifecycle.cycle_life,
+      endOfLifeSohPercent: envelope.battery_lifecycle.end_of_life_soh_percent,
+    },
     agentLogs: Array.from(eventLog.values()).sort((left, right) => left.sequence - right.sequence).slice(-120),
   };
 };

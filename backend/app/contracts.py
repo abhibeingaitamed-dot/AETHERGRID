@@ -84,6 +84,43 @@ class AgentLogTelemetry(BaseModel):
     message: str
 
 
+class FinancialTelemetry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    outage_benchmark_usd: float = Field(ge=10_000_000)
+    prevented_outages: int = Field(ge=0)
+    capital_preserved_usd: float = Field(ge=0)
+    active_outage_exposure_usd: float = Field(ge=0)
+    avoided_sla_penalties_usd: float = Field(ge=0)
+    avoided_sla_by_tier_usd: Dict[str, float]
+    curtailment_cost_usd: float = Field(ge=0)
+    last_event_avoided_sla_usd: float = Field(ge=0)
+    last_event_curtailed_mw: float = Field(ge=0)
+    last_event_recovery_ms: Optional[float] = Field(default=None, ge=0)
+
+
+class EnvironmentalTelemetry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    avoided_diesel_energy_mwh: float = Field(ge=0)
+    avoided_carbon_kg: float = Field(ge=0)
+    avoided_carbon_tonnes: float = Field(ge=0)
+    diesel_carbon_intensity_kg_per_kwh: float = Field(gt=0)
+
+
+class BatteryLifecycleTelemetry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    round_trip_efficiency_percent: float = Field(gt=0, le=100)
+    nominal_capacity_mwh: float = Field(gt=0)
+    energy_remaining_mwh: float = Field(ge=0)
+    energy_delivered_mwh: float = Field(ge=0)
+    equivalent_cycles: float = Field(ge=0)
+    state_of_health_percent: float = Field(gt=0, le=100)
+    cycle_life: float = Field(gt=0)
+    end_of_life_soh_percent: float = Field(gt=0, le=100)
+
+
 class TelemetryEnvelope(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -96,6 +133,9 @@ class TelemetryEnvelope(BaseModel):
     compute: ComputeTelemetry
     battery: BatteryTelemetry
     agents: AgentTelemetry
+    financial: FinancialTelemetry
+    environmental: EnvironmentalTelemetry
+    battery_lifecycle: BatteryLifecycleTelemetry
     events: List[AgentLogTelemetry]
 
 

@@ -11,14 +11,18 @@ from .contracts import (
     AgentLogTelemetry,
     AgentTelemetry,
     BatteryTelemetry,
+    BatteryLifecycleTelemetry,
     CommandAck,
     CommandEnvelope,
     ComputeTelemetry,
+    EnvironmentalTelemetry,
+    FinancialTelemetry,
     GridTelemetry,
     TelemetryEnvelope,
     TierTelemetry,
 )
 from .physics import MicrogridPhysicsEngine, PhysicsConfig, PhysicsSnapshot
+from .impact import ImpactConfig, ImpactSnapshot, ImpactTelemetryModel
 from .swarm import FourAgentSwarm, SwarmSnapshot
 
 
@@ -36,18 +40,21 @@ class SimulationRuntime:
         self,
         physics_config: Optional[PhysicsConfig] = None,
         runtime_config: Optional[RuntimeConfig] = None,
+        impact_config: Optional[ImpactConfig] = None,
     ) -> None:
         self.physics_config = physics_config or PhysicsConfig()
         self.runtime_config = runtime_config or RuntimeConfig(publication_hz=self.physics_config.publication_hz)
         self.engine = MicrogridPhysicsEngine(self.physics_config)
         self.swarm = FourAgentSwarm(self.engine)
+        self.impact = ImpactTelemetryModel(self.physics_config, impact_config)
         self._sequence = 0
         self._last_event_sequence = 0
         self._auto_contingency_triggered = False
         self._subscribers: Set[asyncio.Queue] = set()
         self._task: Optional[asyncio.Task] = None
         self._last_swarm = self.swarm.process(self.engine.snapshot())
-        self._last_envelope = self._build_envelope(self.engine.snapshot(), self._last_swarm, ())
+        self._last_impact = self.impact.observe(self.engine.snapshot(), self._last_swarm, 0.0)
+        self._last_envelope = self._build_envelope(self.engine.snapshot(), self._last_swarm, self._last_impact, ())
 
     @property
     def latest_envelope(self) -> TelemetryEnvelope:
@@ -74,8 +81,9 @@ class SimulationRuntime:
         if events:
             self._last_event_sequence = events[-1].sequence
         self._last_swarm = swarm_state
+        self._last_impact = self.impact.observe(after, swarm_state, step_s)
         self._sequence += 1
-        self._last_envelope = self._build_envelope(after, swarm_state, events)
+        self._last_envelope = self._build_envelope(after, swarm_state, self._last_impact, events)
         return self._last_envelope
 
     async def start(self) -> None:
@@ -157,11 +165,13 @@ class SimulationRuntime:
     def reset(self) -> None:
         self.engine.reset()
         self.swarm.reset()
+        self.impact.reset_active_event()
         self._sequence = 0
         self._last_event_sequence = 0
         self._auto_contingency_triggered = False
         self._last_swarm = self.swarm.process(self.engine.snapshot())
-        self._last_envelope = self._build_envelope(self.engine.snapshot(), self._last_swarm, ())
+        self._last_impact = self.impact.observe(self.engine.snapshot(), self._last_swarm, 0.0)
+        self._last_envelope = self._build_envelope(self.engine.snapshot(), self._last_swarm, self._last_impact, ())
 
     async def _run(self) -> None:
         period_s = 1.0 / self.runtime_config.publication_hz
@@ -185,6 +195,7 @@ class SimulationRuntime:
         self,
         snapshot: PhysicsSnapshot,
         swarm_state: SwarmSnapshot,
+        impact: ImpactSnapshot,
         events: Tuple[object, ...],
     ) -> TelemetryEnvelope:
         tiers = []
@@ -264,6 +275,34 @@ class SimulationRuntime:
                 auditor_nadir_ok=swarm_state.audit.nadir_ok,
                 auditor_recovery_ok=swarm_state.audit.recovery_ok,
                 auditor_detail=swarm_state.audit.detail,
+            ),
+            financial=FinancialTelemetry(
+                outage_benchmark_usd=impact.outage_benchmark_usd,
+                prevented_outages=impact.prevented_outages,
+                capital_preserved_usd=impact.capital_preserved_usd,
+                active_outage_exposure_usd=impact.active_outage_exposure_usd,
+                avoided_sla_penalties_usd=impact.avoided_sla_penalties_usd,
+                avoided_sla_by_tier_usd=dict(impact.avoided_sla_by_tier_usd),
+                curtailment_cost_usd=impact.curtailment_cost_usd,
+                last_event_avoided_sla_usd=impact.last_event_avoided_sla_usd,
+                last_event_curtailed_mw=impact.last_event_curtailed_mw,
+                last_event_recovery_ms=impact.last_event_recovery_ms,
+            ),
+            environmental=EnvironmentalTelemetry(
+                avoided_diesel_energy_mwh=impact.avoided_diesel_energy_mwh,
+                avoided_carbon_kg=impact.avoided_carbon_kg,
+                avoided_carbon_tonnes=impact.avoided_carbon_tonnes,
+                diesel_carbon_intensity_kg_per_kwh=impact.diesel_carbon_intensity_kg_per_kwh,
+            ),
+            battery_lifecycle=BatteryLifecycleTelemetry(
+                round_trip_efficiency_percent=impact.battery_round_trip_efficiency_percent,
+                nominal_capacity_mwh=impact.battery_nominal_capacity_mwh,
+                energy_remaining_mwh=impact.battery_energy_remaining_mwh,
+                energy_delivered_mwh=impact.battery_energy_delivered_mwh,
+                equivalent_cycles=impact.battery_equivalent_cycles,
+                state_of_health_percent=impact.battery_state_of_health_percent,
+                cycle_life=impact.battery_cycle_life,
+                end_of_life_soh_percent=impact.battery_end_of_life_soh_percent,
             ),
             events=event_models,
         )

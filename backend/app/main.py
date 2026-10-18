@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import get_settings
 from .models import HealthResponse, ReadinessResponse
+from .impact import ImpactConfig
 from .physics import PhysicsConfig
 from .runtime import RuntimeConfig, SimulationRuntime
 
@@ -26,6 +27,13 @@ simulation_runtime = SimulationRuntime(
         auto_contingency_trip_mw=settings.auto_contingency_trip_mw,
         transformer_overload_mw=settings.transformer_overload_mw,
         renewable_drop_mw=settings.renewable_drop_mw,
+    ),
+    impact_config=ImpactConfig(
+        catastrophic_outage_benchmark_usd=settings.catastrophic_outage_benchmark_usd,
+        diesel_carbon_intensity_kg_per_kwh=settings.diesel_carbon_intensity_kg_per_kwh,
+        battery_round_trip_efficiency=settings.battery_round_trip_efficiency,
+        battery_cycle_life=settings.battery_cycle_life,
+        battery_end_of_life_soh=settings.battery_end_of_life_soh,
     ),
 )
 
