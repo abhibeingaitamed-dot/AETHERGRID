@@ -1,4 +1,4 @@
-.PHONY: install install-frontend install-backend dev test build clean
+.PHONY: install install-frontend install-backend dev test build verify-rebuild clean
 
 PYTHON_BIN ?= .venv/bin/python
 
@@ -9,9 +9,10 @@ install-backend:
 	$(PYTHON_BIN) -m pip install -r backend/requirements.lock
 
 install-frontend:
+	npm ci
 
 dev:
-	@./scripts/dev.sh
+	@./launch.sh
 
 test:
 	@test -x "$(PYTHON_BIN)" || (printf 'Run make install first to create the project-local Python environment.\n' >&2; exit 1)
@@ -20,6 +21,9 @@ test:
 
 build:
 	npm run build
+
+verify-rebuild:
+	@./scripts/offline_rebuild_check.sh
 
 clean:
 	rm -rf frontend/dist frontend/.vite .pytest_cache
