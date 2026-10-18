@@ -468,31 +468,26 @@ button {
 .signal-bars i:nth-child(4) { height: 11px; }
 
 .tactical-rail {
-  grid-column: 1;
-  grid-row: 2;
-  align-self: center;
   display: grid;
   gap: 14px;
-  width: 284px;
   pointer-events: auto;
 }
 
 .oscilloscope-panel,
 .chaos-suite,
 .impact-panel,
-.rack-inspector,
 .agent-terminal {
-  position: absolute;
+  position: relative;
+  overflow: hidden;
+}
+
+.rack-inspector {
   overflow: hidden;
 }
 
 .oscilloscope-panel {
-  top: 104px;
-  right: 24px;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  width: 405px;
-  height: 190px;
   padding: 12px 13px 9px;
 }
 
@@ -586,9 +581,6 @@ button {
 }
 
 .chaos-suite {
-  top: 308px;
-  left: 330px;
-  width: 330px;
   padding: 13px;
 }
 
@@ -702,31 +694,19 @@ button {
 }
 
 .agent-terminal {
-  left: 330px;
-  bottom: 190px;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  width: 530px;
-  height: 184px;
   padding: 12px 13px 9px;
 }
 
 .impact-panel {
-  top: 308px;
-  right: 24px;
   display: grid;
   grid-template-rows: auto auto auto auto;
   gap: 9px;
-  width: 405px;
-  min-height: 286px;
   padding: 13px;
 }
 
 .rack-inspector {
-  top: 104px;
-  left: 330px;
-  width: 270px;
-  min-height: 154px;
   padding: 12px;
   border-color: rgba(0, 224, 255, 0.52);
   background: linear-gradient(135deg, rgba(7, 43, 60, 0.84), rgba(3, 9, 19, 0.78));
@@ -1432,12 +1412,9 @@ button {
 }
 
 .telemetry-dock {
-  grid-column: 2;
-  grid-row: 3;
-  display: grid;
-  grid-template-columns: 1.15fr 0.92fr 0.9fr;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-  align-self: end;
   min-width: 0;
 }
 
@@ -1670,8 +1647,6 @@ button {
 .amber-code { color: #ba9dff; }
 
 .hud-footer {
-  grid-column: 1 / -1;
-  grid-row: 4;
   display: flex;
   justify-content: space-between;
   padding: 10px 3px 0;
@@ -1706,16 +1681,6 @@ button {
 }
 
 @media (max-width: 1180px) {
-  .hud-layer {
-    grid-template-columns: 236px 1fr;
-    gap: 0 14px;
-    padding: 14px 16px 13px;
-  }
-
-  .tactical-rail {
-    width: 236px;
-  }
-
   .brand-lockup {
     min-width: 240px;
   }
@@ -1726,44 +1691,6 @@ button {
 
   .clock-value {
     font-size: 10px !important;
-  }
-
-  .telemetry-dock {
-    grid-template-columns: 1.1fr 0.95fr;
-  }
-
-  .signal-card {
-    display: none;
-  }
-
-  .oscilloscope-panel {
-    right: 16px;
-    width: 342px;
-  }
-
-  .chaos-suite,
-  .impact-panel,
-  .rack-inspector,
-  .agent-terminal {
-    left: 250px;
-  }
-
-  .chaos-suite {
-    width: 300px;
-  }
-
-  .impact-panel {
-    right: 16px;
-    width: 342px;
-  }
-
-  .agent-terminal {
-    width: 450px;
-  }
-
-  .rack-inspector {
-    left: 250px;
-    width: 240px;
   }
 
   .audio-console {
@@ -1788,42 +1715,6 @@ button {
     min-height: 900px;
     height: auto;
     padding: 10px;
-  }
-
-  .oscilloscope-panel,
-  .chaos-suite,
-  .impact-panel,
-  .rack-inspector,
-  .agent-terminal {
-    position: relative;
-    top: auto;
-    right: auto;
-    bottom: auto;
-    left: auto;
-    width: 100%;
-  }
-
-  .oscilloscope-panel {
-    height: 184px;
-  }
-
-  .chaos-suite {
-    order: 4;
-  }
-
-  .impact-panel {
-    order: 5;
-    min-height: 286px;
-  }
-
-  .rack-inspector {
-    order: 6;
-    min-height: 154px;
-  }
-
-  .agent-terminal {
-    order: 7;
-    height: 200px;
   }
 
   .hud-header {
@@ -1863,16 +1754,6 @@ button {
 
   .rail-signal-card {
     min-height: auto;
-  }
-
-  .telemetry-dock {
-    display: grid;
-    grid-template-columns: 1fr;
-    order: 8;
-  }
-
-  .signal-card {
-    display: block;
   }
 
   .facility-caption,

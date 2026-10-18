@@ -1,4 +1,4 @@
-.PHONY: install install-frontend install-backend dev test build verify-rebuild clean
+.PHONY: install install-frontend install-backend dev test verify-responsive build verify-rebuild clean
 
 PYTHON_BIN ?= .venv/bin/python
 
@@ -17,7 +17,11 @@ dev:
 test:
 	@test -x "$(PYTHON_BIN)" || (printf 'Run make install first to create the project-local Python environment.\n' >&2; exit 1)
 	$(PYTHON_BIN) -m pytest backend/tests
+	node scripts/verify_responsive_layout.mjs
 	npm run build
+
+verify-responsive:
+	node scripts/verify_responsive_layout.mjs
 
 build:
 	npm run build
