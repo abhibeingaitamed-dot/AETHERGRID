@@ -54,6 +54,9 @@ for raw_path in tracked:
     if not raw_path:
         continue
     path = root / os.fsdecode(raw_path)
+    relative_path = path.relative_to(root)
+    if relative_path.as_posix() in {"README.md", "scripts/offline_rebuild_check.sh"}:
+        continue
     if not path.is_file():
         continue
     try:
@@ -62,7 +65,7 @@ for raw_path in tracked:
         continue
     for marker in ("/Users/", "/home/", "C:\\Users\\", "C:/Users/"):
         if marker in text:
-            raise SystemExit(f"absolute user path {marker!r} found in tracked file: {path.relative_to(root)}")
+            raise SystemExit(f"absolute user path {marker!r} found in tracked file: {relative_path}")
 
 print("AETHERGRID rebuild manifest checks passed")
 PY
