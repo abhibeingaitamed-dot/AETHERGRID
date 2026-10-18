@@ -12,6 +12,7 @@ const cameraModes: Array<{ id: CameraMode; label: string; detail: string }> = [
   { id: 'overview', label: 'MACRO ORBIT', detail: 'FACILITY OVERVIEW' },
   { id: 'canyon', label: 'RACK CANYON', detail: 'LOW-ANGLE FLY-THROUGH' },
   { id: 'inspection', label: 'TRANSFORMER', detail: 'HV YARD INSPECTION' },
+  { id: 'director', label: 'DIRECTOR TOUR', detail: 'AUTOPILOT DRONE FLIGHT' },
 ];
 
 export function TacticalRail({ telemetry, cameraMode, onCameraModeChange }: TacticalRailProps): ReactElement {

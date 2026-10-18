@@ -75,16 +75,16 @@ export function TelemetryHeader({ telemetry, audioEnabled, audioMuted, audioVolu
               <span>VOL</span>
               <input aria-label="Master audio volume" type="range" min="0" max="1" step="0.01" value={audioVolume} onChange={(event) => onVolumeChange(Number(event.target.value))} />
             </label>
-            <label className="soundscape-control">
-              <span>SCENE</span>
-              <select aria-label="Audio soundscape" value={soundscape} onChange={(event) => onSoundscapeChange(event.target.value as SoundscapeMode)}>
-                <option value="cinematic">CINEMATIC AMBIENT</option>
-                <option value="minimalist">MINIMALIST HAPTICS</option>
-                <option value="muted">MUTED</option>
-              </select>
-            </label>
           </>
         )}
+        <label className={`soundscape-control ${audioEnabled ? '' : 'is-locked'}`}>
+          <span>SCENE</span>
+          <select aria-label="Audio soundscape" disabled={!audioEnabled} value={soundscape} onChange={(event) => onSoundscapeChange(event.target.value as SoundscapeMode)}>
+            <option value="cinematic">CINEMATIC AMBIENT</option>
+            <option value="minimalist">MINIMALIST HAPTICS</option>
+            <option value="muted">MUTED</option>
+          </select>
+        </label>
       </div>
     </header>
   );

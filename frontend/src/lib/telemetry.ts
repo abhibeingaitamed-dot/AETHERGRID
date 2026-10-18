@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export type CameraMode = 'overview' | 'canyon' | 'inspection';
+export type CameraMode = 'overview' | 'canyon' | 'inspection' | 'director';
 export type StreamStatus = 'CONNECTING' | 'LIVE' | 'RECONNECTING' | 'OFFLINE';
 
 export type WebSocketCommand =
@@ -16,6 +16,15 @@ export interface AgentLogEntry {
   agent: 'SENTINEL' | 'ARBITER' | 'DISPATCHER' | 'AUDITOR';
   level: 'INFO' | 'WARN' | 'ALERT' | 'DECISION' | 'ACTION';
   message: string;
+}
+
+export interface RackSelection {
+  id: string;
+  corridor: string;
+  tier: 'TIER_1' | 'TIER_2' | 'TIER_3';
+  temperatureCelsius: number;
+  powerMw: number;
+  gpuCount: number;
 }
 
 export interface FinancialImpact {

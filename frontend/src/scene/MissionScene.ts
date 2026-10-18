@@ -4,7 +4,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import type { CameraMode } from '../lib/telemetry';
+import type { CameraMode, RackSelection } from '../lib/telemetry';
 import {
   chromaticAberrationShader,
   energyFragmentShader,
@@ -15,6 +15,12 @@ import {
   nodeVertexShader,
   particleFragmentShader,
   particleVertexShader,
+  coolantFloorFragmentShader,
+  coolantFloorVertexShader,
+  godRayFragmentShader,
+  godRayVertexShader,
+  lidarScanFragmentShader,
+  lidarScanVertexShader,
 } from './shaders';
 
 type UniformMap = Record<string, { value: unknown }>;
@@ -45,7 +51,14 @@ const CAMERA_POSES: Record<CameraMode, CameraPose> = {
     lookAt: new THREE.Vector3(30.5, 2.2, 0),
     fov: 37,
   },
+  director: {
+    position: new THREE.Vector3(42, 27, 42),
+    lookAt: new THREE.Vector3(2, 2.4, 0),
+    fov: 42,
+  },
 };
+
+const DIRECTOR_DURATION_SECONDS = 18;
 
 export class MissionScene {
   private readonly container: HTMLElement;
@@ -62,18 +75,44 @@ export class MissionScene {
   private readonly energyMaterials: THREE.ShaderMaterial[] = [];
   private readonly heatMaterials: THREE.ShaderMaterial[] = [];
   private readonly particleMaterials: THREE.ShaderMaterial[] = [];
+  private readonly coolantMaterials: THREE.ShaderMaterial[] = [];
+  private readonly lidarMaterials: THREE.ShaderMaterial[] = [];
+  private readonly godRayMaterials: THREE.ShaderMaterial[] = [];
+  private readonly rackFrames: THREE.Mesh[] = [];
+  private readonly raycaster = new THREE.Raycaster();
   private readonly targetPosition = new THREE.Vector3();
   private readonly targetLookAt = new THREE.Vector3();
   private readonly pointer = new THREE.Vector2();
   private mode: CameraMode = 'overview';
+  private readonly onRackSelect?: (rack: RackSelection | null) => void;
+  private hoveredRack: THREE.Mesh | null = null;
+  private lockedRack: THREE.Mesh | null = null;
+  private directorElapsed = 0;
+  private readonly directorPositionCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-26, 3.1, -16),
+    new THREE.Vector3(-6, 3.4, -15),
+    new THREE.Vector3(16, 4.8, -8),
+    new THREE.Vector3(29, 8.5, 4),
+    new THREE.Vector3(35, 15, 16),
+    new THREE.Vector3(44, 29, 43),
+  ]);
+  private readonly directorLookCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(2, 2.1, -15),
+    new THREE.Vector3(10, 2.4, -10),
+    new THREE.Vector3(29, 3.2, 0),
+    new THREE.Vector3(30, 4.0, 0),
+    new THREE.Vector3(12, 4.0, 0),
+    new THREE.Vector3(2, 2.4, 0),
+  ]);
   private load = 0.62;
   private animationFrame = 0;
   private disposed = false;
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, onRackSelect?: (rack: RackSelection | null) => void) {
     this.container = container;
+    this.onRackSelect = onRackSelect;
     this.scene.background = new THREE.Color(0x03050d);
-    this.scene.fog = new THREE.FogExp2(0x03050d, 0.012);
+    this.scene.fog = new THREE.FogExp2(0x03050d, 0.015);
 
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -94,6 +133,7 @@ export class MissionScene {
       uniforms: {
         uTime: { value: 0 },
         uLoad: { value: this.load },
+        uScanPosition: { value: -46 },
       },
       vertexShader: nodeVertexShader,
       fragmentShader: nodeFragmentShader,
@@ -109,10 +149,12 @@ export class MissionScene {
     this.buildLighting();
     this.buildFacility();
     this.buildSubstation();
+    this.buildAtmosphere();
     this.buildPostProcessing();
 
     this.container.addEventListener('pointermove', this.onPointerMove);
     this.container.addEventListener('pointerleave', this.onPointerLeave);
+    this.container.addEventListener('click', this.onClick);
     window.addEventListener('resize', this.onResize);
     this.onResize();
     this.animate();
@@ -120,10 +162,12 @@ export class MissionScene {
 
   setLoad(load: number): void {
     this.load = THREE.MathUtils.clamp(load, 0, 1);
+    if (this.lockedRack) this.onRackSelect?.(this.describeRack(this.lockedRack));
   }
 
   setCameraMode(mode: CameraMode): void {
     this.mode = mode;
+    if (mode === 'director') this.directorElapsed = 0;
   }
 
   dispose(): void {
@@ -131,6 +175,7 @@ export class MissionScene {
     window.removeEventListener('resize', this.onResize);
     this.container.removeEventListener('pointermove', this.onPointerMove);
     this.container.removeEventListener('pointerleave', this.onPointerLeave);
+    this.container.removeEventListener('click', this.onClick);
     cancelAnimationFrame(this.animationFrame);
     this.renderer.dispose();
     this.composer.dispose();
@@ -173,10 +218,52 @@ export class MissionScene {
     this.scene.add(coolingLight);
   }
 
+  private buildAtmosphere(): void {
+    const grateLight = new THREE.DirectionalLight(0x6bcfff, 1.1);
+    grateLight.position.set(-5, 22, -16);
+    grateLight.target.position.set(0, 0, -2);
+    this.scene.add(grateLight, grateLight.target);
+
+    for (const [index, x] of [-21, -10, 2, 14, 26].entries()) {
+      const material = new THREE.ShaderMaterial({
+        uniforms: { uTime: { value: index * 0.7 }, uLoad: { value: this.load } },
+        vertexShader: godRayVertexShader,
+        fragmentShader: godRayFragmentShader,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+      });
+      const shaft = new THREE.Mesh(new THREE.PlaneGeometry(7.5, 23, 1, 16), material);
+      shaft.position.set(x, 9.0, -8 + (index % 2) * 12);
+      shaft.rotation.y = (index - 2) * 0.035;
+      shaft.renderOrder = 1;
+      this.godRayMaterials.push(material);
+      this.scene.add(shaft);
+    }
+
+    const ceiling = new THREE.Mesh(
+      new THREE.PlaneGeometry(96, 66),
+      new THREE.MeshBasicMaterial({ color: 0x0b1a2a, transparent: true, opacity: 0.18, side: THREE.DoubleSide }),
+    );
+    ceiling.rotation.x = -Math.PI / 2;
+    ceiling.position.y = 20;
+    this.scene.add(ceiling);
+  }
+
   private buildFacility(): void {
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(110, 78),
-      new THREE.MeshStandardMaterial({ color: 0x050912, metalness: 0.8, roughness: 0.64 }),
+      new THREE.MeshPhysicalMaterial({
+        color: 0x06111d,
+        metalness: 0.86,
+        roughness: 0.28,
+        transmission: 0.12,
+        transparent: true,
+        opacity: 0.86,
+        clearcoat: 0.65,
+        clearcoatRoughness: 0.2,
+      }),
     );
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -0.34;
@@ -202,6 +289,41 @@ export class MissionScene {
     this.buildCoolingConduits();
     this.buildParticles();
     this.buildFacilityMarkers();
+    this.buildCoolantFloor();
+  }
+
+  private buildCoolantFloor(): void {
+    const coolantMaterial = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uLoad: { value: this.load } },
+      vertexShader: coolantFloorVertexShader,
+      fragmentShader: coolantFloorFragmentShader,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+    });
+    const coolantFloor = new THREE.Mesh(new THREE.PlaneGeometry(96, 68, 1, 1), coolantMaterial);
+    coolantFloor.rotation.x = -Math.PI / 2;
+    coolantFloor.position.y = -0.255;
+    coolantFloor.renderOrder = 2;
+    this.coolantMaterials.push(coolantMaterial);
+    this.scene.add(coolantFloor);
+
+    const lidarMaterial = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uLoad: { value: this.load } },
+      vertexShader: lidarScanVertexShader,
+      fragmentShader: lidarScanFragmentShader,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+    });
+    const lidarPlane = new THREE.Mesh(new THREE.PlaneGeometry(92, 66, 1, 1), lidarMaterial);
+    lidarPlane.rotation.x = -Math.PI / 2;
+    lidarPlane.position.y = -0.22;
+    lidarPlane.renderOrder = 4;
+    this.lidarMaterials.push(lidarMaterial);
+    this.scene.add(lidarPlane);
   }
 
   private buildRacks(): void {
@@ -223,6 +345,16 @@ export class MissionScene {
           new THREE.MeshBasicMaterial({ color: 0x0c2f43, wireframe: true, transparent: true, opacity: 0.42 }),
         );
         rack.position.set(rackX, 1.02, corridorZ);
+        rack.userData = {
+          rackId: `RACK-${String(corridorIndex * RACKS_PER_CORRIDOR + rackIndex + 1).padStart(2, '0')}`,
+          corridor: `CORRIDOR-${String(corridorIndex + 1).padStart(2, '0')}`,
+          tier: (rackIndex + corridorIndex) % 3 === 0 ? 'TIER_1' : (rackIndex + corridorIndex) % 3 === 1 ? 'TIER_2' : 'TIER_3',
+          rackIndex,
+          corridorIndex,
+          baseColor: 0x0c2f43,
+          baseOpacity: 0.42,
+        };
+        this.rackFrames.push(rack);
         this.scene.add(rack);
 
         const base = new THREE.Mesh(
@@ -494,8 +626,16 @@ export class MissionScene {
     const pose = CAMERA_POSES[this.mode];
     const damping = 1 - Math.exp(-delta * 3.4);
 
-    this.targetPosition.lerp(pose.position, damping);
-    this.targetLookAt.lerp(pose.lookAt, damping);
+    if (this.mode === 'director') {
+      this.directorElapsed = Math.min(DIRECTOR_DURATION_SECONDS, this.directorElapsed + delta);
+      const linearProgress = this.directorElapsed / DIRECTOR_DURATION_SECONDS;
+      const smoothProgress = linearProgress * linearProgress * (3 - 2 * linearProgress);
+      this.targetPosition.lerp(this.directorPositionCurve.getPointAt(smoothProgress), damping);
+      this.targetLookAt.lerp(this.directorLookCurve.getPointAt(smoothProgress), damping);
+    } else {
+      this.targetPosition.lerp(pose.position, damping);
+      this.targetLookAt.lerp(pose.lookAt, damping);
+    }
     const pointerOffset = new THREE.Vector3(this.pointer.x * 0.65, this.pointer.y * 0.28, 0);
     const desiredPosition = this.targetPosition.clone().add(pointerOffset);
     this.camera.position.lerp(desiredPosition, damping);
@@ -508,6 +648,7 @@ export class MissionScene {
 
     this.nodeMaterial.uniforms.uTime.value = elapsed;
     this.nodeMaterial.uniforms.uLoad.value = this.load;
+    this.nodeMaterial.uniforms.uScanPosition.value = ((elapsed * 5.0) % 92.0) - 46.0;
     for (const material of this.energyMaterials) {
       material.uniforms.uTime.value = elapsed;
       material.uniforms.uLoad.value = this.load;
@@ -520,12 +661,72 @@ export class MissionScene {
       material.uniforms.uTime.value = elapsed;
       material.uniforms.uLoad.value = this.load;
     }
+    for (const material of this.coolantMaterials) {
+      material.uniforms.uTime.value = elapsed;
+      material.uniforms.uLoad.value = this.load;
+    }
+    for (const material of this.lidarMaterials) {
+      material.uniforms.uTime.value = elapsed;
+      material.uniforms.uLoad.value = this.load;
+    }
+    for (const material of this.godRayMaterials) {
+      material.uniforms.uTime.value = elapsed;
+      material.uniforms.uLoad.value = this.load;
+    }
+    this.updateRackScan(((elapsed * 5.0) % 92.0) - 46.0);
 
     this.bloomPass.strength = 0.88 + this.load * 0.72;
     this.aberrationPass.uniforms.uStrength.value = 0.0009 + Math.max(this.load - 0.72, 0) * 0.012;
     const bokehUniforms = this.bokehPass.uniforms as unknown as Record<string, { value: number }>;
-    bokehUniforms.focus.value = this.mode === 'inspection' ? 25 : this.mode === 'canyon' ? 17 : 36;
+    bokehUniforms.focus.value = this.mode === 'inspection' ? 25 : this.mode === 'canyon' ? 17 : this.mode === 'director' ? 30 : 36;
     this.composer.render();
+  };
+
+  private updateRackScan(scanPosition: number): void {
+    for (const rack of this.rackFrames) {
+      const material = rack.material as THREE.MeshBasicMaterial;
+      const distance = Math.abs(rack.position.x - scanPosition);
+      const scanGlow = 1 - THREE.MathUtils.smoothstep(distance, 0, 1.8);
+      const isSelected = rack === this.hoveredRack;
+      material.opacity = isSelected ? 0.92 : 0.32 + scanGlow * 0.58;
+      material.color.set(isSelected ? 0x7aefff : scanGlow > 0.05 ? 0x30cfff : 0x0c2f43);
+    }
+  }
+
+  private raycastRack(): void {
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const intersection = this.raycaster.intersectObjects(this.rackFrames, false)[0];
+    const rack = intersection?.object as THREE.Mesh | undefined;
+    if (rack === this.hoveredRack) return;
+    this.hoveredRack = rack ?? null;
+    if (rack) {
+      this.onRackSelect?.(this.describeRack(rack));
+    } else if (!this.lockedRack) {
+      this.onRackSelect?.(null);
+    }
+  }
+
+  private describeRack(rack: THREE.Mesh): RackSelection {
+    const data = rack.userData as { rackId: string; corridor: string; tier: RackSelection['tier']; rackIndex: number; corridorIndex: number };
+    const tierHeat = data.tier === 'TIER_1' ? 1.12 : data.tier === 'TIER_2' ? 0.98 : 0.86;
+    return {
+      id: data.rackId,
+      corridor: data.corridor,
+      tier: data.tier,
+      temperatureCelsius: 50 + this.load * 34 * tierHeat + data.corridorIndex * 0.7,
+      powerMw: 14.2 + this.load * 4.7 * tierHeat + (data.rackIndex % 4) * 0.22,
+      gpuCount: 250,
+    };
+  }
+
+  private onClick = (): void => {
+    if (this.hoveredRack) {
+      this.lockedRack = this.hoveredRack;
+      this.onRackSelect?.(this.describeRack(this.lockedRack));
+    } else {
+      this.lockedRack = null;
+      this.onRackSelect?.(null);
+    }
   };
 
   private onResize = (): void => {
@@ -541,9 +742,12 @@ export class MissionScene {
     const bounds = this.container.getBoundingClientRect();
     this.pointer.x = THREE.MathUtils.clamp(((event.clientX - bounds.left) / bounds.width) * 2 - 1, -1, 1);
     this.pointer.y = THREE.MathUtils.clamp(-(((event.clientY - bounds.top) / bounds.height) * 2 - 1), -1, 1);
+    this.raycastRack();
   };
 
   private onPointerLeave = (): void => {
     this.pointer.multiplyScalar(0.25);
+    this.hoveredRack = null;
+    if (!this.lockedRack) this.onRackSelect?.(null);
   };
 }

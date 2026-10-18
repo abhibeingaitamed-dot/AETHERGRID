@@ -24,6 +24,7 @@ export const nodeFragmentShader = /* glsl */ `
 
   uniform float uTime;
   uniform float uLoad;
+  uniform float uScanPosition;
 
   varying vec3 vInstanceColor;
   varying vec3 vWorldPosition;
@@ -44,7 +45,10 @@ export const nodeFragmentShader = /* glsl */ `
     float edge = pow(1.0 - max(dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)), 0.0), 1.8);
     vec3 thermal = thermalRamp(clamp(localHeat + shimmer, 0.0, 1.0));
     float core = 0.44 + localHeat * 1.35;
+    float scanDistance = abs(vWorldPosition.x - uScanPosition);
+    float scanGlow = 1.0 - smoothstep(0.0, 1.35, scanDistance);
     vec3 color = thermal * core * vFlicker + thermal * edge * 0.7;
+    color += vec3(0.02, 0.78, 1.0) * scanGlow * (0.7 + uLoad * 0.6);
     float alpha = 0.80 + localHeat * 0.20;
     gl_FragColor = vec4(color, alpha);
   }
@@ -98,7 +102,7 @@ export const particleVertexShader = /* glsl */ `
   varying float vLane;
 
   void main() {
-    float travel = fract(aPhase + uTime * aSpeed);
+    float travel = fract(aPhase + uTime * aSpeed * (1.0 + uLoad * 1.8));
     vec3 animated = position;
     float wave = sin(travel * 6.2831853 + aPhase * 9.0);
     if (aLane < 0.5) {
@@ -120,6 +124,8 @@ export const particleVertexShader = /* glsl */ `
 export const particleFragmentShader = /* glsl */ `
   precision highp float;
 
+  uniform float uLoad;
+
   varying float vPulse;
   varying float vLane;
 
@@ -128,7 +134,8 @@ export const particleFragmentShader = /* glsl */ `
     float distanceToCore = length(centered);
     if (distanceToCore > 0.5) discard;
     float glow = pow(1.0 - distanceToCore * 2.0, 2.4) * (0.65 + vPulse * 0.7);
-    vec3 coolant = vec3(0.05, 0.72, 1.0);
+    vec3 coolant = mix(vec3(0.05, 0.72, 1.0), vec3(0.12, 0.92, 0.76), smoothstep(0.55, 0.92, vPulse));
+    coolant = mix(coolant, vec3(1.0, 0.42, 0.08), smoothstep(0.72, 1.0, uLoad) * 0.55);
     vec3 transmission = vec3(1.0, 0.30, 0.04);
     vec3 color = mix(coolant, transmission, step(0.5, vLane));
     gl_FragColor = vec4(color * glow * 2.0, glow);
@@ -202,3 +209,85 @@ export const chromaticAberrationShader = {
     }
   `,
 };
+
+export const coolantFloorVertexShader = /* glsl */ `
+  uniform float uTime;
+  uniform float uLoad;
+  varying vec2 vUv;
+  varying vec3 vWorldPosition;
+
+  void main() {
+    vUv = uv;
+    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+    vWorldPosition = worldPosition.xyz;
+    gl_Position = projectionMatrix * viewMatrix * worldPosition;
+  }
+`;
+
+export const coolantFloorFragmentShader = /* glsl */ `
+  precision highp float;
+
+  uniform float uTime;
+  uniform float uLoad;
+  varying vec2 vUv;
+  varying vec3 vWorldPosition;
+
+  void main() {
+    float streamA = sin(vUv.x * 46.0 - uTime * (2.0 + uLoad * 4.0) + sin(vUv.y * 12.0) * 0.8);
+    float streamB = sin(vUv.y * 32.0 + uTime * (1.2 + uLoad * 2.2) + vUv.x * 4.0);
+    float flow = smoothstep(0.58, 0.95, streamA * 0.5 + 0.5) * 0.55 + smoothstep(0.7, 1.0, streamB * 0.5 + 0.5) * 0.35;
+    vec3 cool = vec3(0.01, 0.32, 0.62);
+    vec3 warm = vec3(0.96, 0.22, 0.035);
+    vec3 color = mix(cool, warm, smoothstep(0.58, 1.0, uLoad));
+    float grid = step(0.965, fract(vUv.x * 32.0)) + step(0.965, fract(vUv.y * 18.0));
+    gl_FragColor = vec4(color * (0.22 + flow * 1.6) + vec3(0.02, 0.15, 0.22) * grid, 0.18 + flow * 0.23);
+  }
+`;
+
+export const lidarScanVertexShader = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+export const lidarScanFragmentShader = /* glsl */ `
+  precision highp float;
+  uniform float uTime;
+  uniform float uLoad;
+  varying vec2 vUv;
+
+  void main() {
+    float line = 1.0 - smoothstep(0.0, 0.12, abs(vUv.x - fract(uTime * 0.055)));
+    float secondary = 1.0 - smoothstep(0.0, 0.025, abs(vUv.x - fract(uTime * 0.055 + 0.12)));
+    float grid = step(0.985, fract(vUv.y * 26.0)) * 0.28;
+    vec3 color = mix(vec3(0.02, 0.7, 1.0), vec3(1.0, 0.26, 0.05), smoothstep(0.68, 1.0, uLoad));
+    gl_FragColor = vec4(color, (line * 0.35 + secondary * 0.12 + grid) * (0.65 + uLoad * 0.5));
+  }
+`;
+
+export const godRayVertexShader = /* glsl */ `
+  uniform float uTime;
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    vec3 displaced = position;
+    displaced.x += sin(uTime * 0.35 + position.y * 0.08) * 0.12;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
+  }
+`;
+
+export const godRayFragmentShader = /* glsl */ `
+  precision highp float;
+  uniform float uTime;
+  uniform float uLoad;
+  varying vec2 vUv;
+  void main() {
+    float edgeFade = smoothstep(0.0, 0.18, vUv.x) * smoothstep(1.0, 0.82, vUv.x);
+    float depthFade = smoothstep(0.0, 0.12, vUv.y) * smoothstep(1.0, 0.22, vUv.y);
+    float shimmer = 0.75 + 0.25 * sin(uTime * 0.8 + vUv.y * 9.0);
+    vec3 color = mix(vec3(0.06, 0.36, 0.72), vec3(0.2, 0.85, 1.0), smoothstep(0.65, 1.0, uLoad));
+    gl_FragColor = vec4(color, edgeFade * depthFade * shimmer * 0.08);
+  }
+`;

@@ -444,6 +444,10 @@ button {
   letter-spacing: 0.04em;
 }
 
+.soundscape-control.is-locked {
+  opacity: 0.5;
+}
+
 .signal-bars {
   display: inline-flex;
   align-items: flex-end;
@@ -476,6 +480,7 @@ button {
 .oscilloscope-panel,
 .chaos-suite,
 .impact-panel,
+.rack-inspector,
 .agent-terminal {
   position: absolute;
   overflow: hidden;
@@ -715,6 +720,117 @@ button {
   width: 405px;
   min-height: 286px;
   padding: 13px;
+}
+
+.rack-inspector {
+  top: 104px;
+  left: 330px;
+  width: 270px;
+  min-height: 154px;
+  padding: 12px;
+  border-color: rgba(0, 224, 255, 0.52);
+  background: linear-gradient(135deg, rgba(7, 43, 60, 0.84), rgba(3, 9, 19, 0.78));
+  box-shadow: inset 0 0 24px rgba(0, 201, 255, 0.08), 0 0 30px rgba(0, 161, 255, 0.1);
+}
+
+.rack-inspector::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 44px;
+  height: 2px;
+  background: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan);
+  content: "";
+}
+
+.rack-inspector-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.rack-inspector-heading h2 {
+  margin: 0;
+  color: #e5fbff;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+}
+
+.rack-inspector-heading button {
+  width: 21px;
+  height: 21px;
+  border: 1px solid rgba(114, 221, 244, 0.3);
+  background: rgba(0, 26, 39, 0.5);
+  color: #91dbe9;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.rack-inspector-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 8px 0 11px;
+  color: #69ebc5;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 7px;
+  letter-spacing: 0.06em;
+}
+
+.rack-inspector-status i {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #69ebc5;
+  box-shadow: 0 0 7px #69ebc5;
+}
+
+.rack-inspector-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.rack-inspector-metrics > div {
+  display: grid;
+  gap: 3px;
+  padding: 6px 5px;
+  border: 1px solid rgba(106, 194, 219, 0.13);
+  background: rgba(3, 14, 23, 0.42);
+}
+
+.rack-inspector-metrics span,
+.rack-inspector-footer span {
+  color: #6f98a8;
+  font-size: 7px;
+  letter-spacing: 0.1em;
+}
+
+.rack-inspector-metrics strong {
+  color: #b8f0fa;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.rack-inspector-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 9px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(106, 194, 219, 0.14);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 7px;
+}
+
+.rack-inspector-footer b {
+  color: #a7e8f5;
+  font-weight: 400;
 }
 
 .impact-panel::before {
@@ -1627,6 +1743,7 @@ button {
 
   .chaos-suite,
   .impact-panel,
+  .rack-inspector,
   .agent-terminal {
     left: 250px;
   }
@@ -1642,6 +1759,11 @@ button {
 
   .agent-terminal {
     width: 450px;
+  }
+
+  .rack-inspector {
+    left: 250px;
+    width: 240px;
   }
 
   .audio-console {
@@ -1671,6 +1793,7 @@ button {
   .oscilloscope-panel,
   .chaos-suite,
   .impact-panel,
+  .rack-inspector,
   .agent-terminal {
     position: relative;
     top: auto;
@@ -1693,8 +1816,13 @@ button {
     min-height: 286px;
   }
 
-  .agent-terminal {
+  .rack-inspector {
     order: 6;
+    min-height: 154px;
+  }
+
+  .agent-terminal {
+    order: 7;
     height: 200px;
   }
 
@@ -1740,7 +1868,7 @@ button {
   .telemetry-dock {
     display: grid;
     grid-template-columns: 1fr;
-    order: 7;
+    order: 8;
   }
 
   .signal-card {
