@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TelemetrySnapshot } from '../lib/telemetry';
 import { WebAudioSynthesizer } from './WebAudioSynthesizer';
-import type { SoundscapeMode } from './WebAudioSynthesizer';
+import type { AudioInteraction, SoundscapeMode } from './WebAudioSynthesizer';
 
 export function useAudioEngine(telemetry: TelemetrySnapshot): {
   enabled: boolean;
@@ -12,6 +12,7 @@ export function useAudioEngine(telemetry: TelemetrySnapshot): {
   toggleMute: () => void;
   setVolume: (value: number) => void;
   setSoundscape: (soundscape: SoundscapeMode) => void;
+  playInteraction: (interaction: AudioInteraction) => void;
 } {
   const engineRef = useRef<WebAudioSynthesizer | null>(null);
   const [enabled, setEnabled] = useState(false);
@@ -57,5 +58,9 @@ export function useAudioEngine(telemetry: TelemetrySnapshot): {
     engineRef.current?.setSoundscape(nextSoundscape);
   }, []);
 
-  return { enabled, muted, volume, soundscape, enable, toggleMute, setVolume, setSoundscape };
+  const playInteraction = useCallback((interaction: AudioInteraction) => {
+    engineRef.current?.playInteraction(interaction);
+  }, []);
+
+  return { enabled, muted, volume, soundscape, enable, toggleMute, setVolume, setSoundscape, playInteraction };
 }

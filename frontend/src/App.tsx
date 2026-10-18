@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactElement } from 'react';
+import { useCallback, useRef, useState, type ReactElement } from 'react';
 import { AgentTerminal } from './components/AgentTerminal';
 import { ChaosSuite } from './components/ChaosSuite';
 import { ImpactPanel } from './components/ImpactPanel';
@@ -16,7 +16,21 @@ export function App(): ReactElement {
   const audio = useAudioEngine(telemetry);
   const [cameraMode, setCameraMode] = useState<CameraMode>('overview');
   const [rackSelection, setRackSelection] = useState<RackSelection | null>(null);
-  const handleRackSelect = useCallback((rack: RackSelection | null) => setRackSelection(rack), []);
+  const rackSelectionIdRef = useRef<string | null>(null);
+  const handleRackSelect = useCallback((rack: RackSelection | null) => {
+    const nextRackId = rack?.id ?? null;
+    if (nextRackId && nextRackId !== rackSelectionIdRef.current) audio.playInteraction('rack');
+    rackSelectionIdRef.current = nextRackId;
+    setRackSelection(rack);
+  }, [audio.playInteraction]);
+  const handleCameraModeChange = useCallback((nextMode: CameraMode) => {
+    if (nextMode !== cameraMode) audio.playInteraction('camera');
+    setCameraMode(nextMode);
+  }, [audio.playInteraction, cameraMode]);
+  const sendChaosCommand = useCallback((command: Parameters<typeof sendCommand>[0]): boolean => {
+    audio.playInteraction('chaos');
+    return sendCommand(command);
+  }, [audio.playInteraction, sendCommand]);
 
   return (
     <main className="mission-app">
@@ -28,13 +42,19 @@ export function App(): ReactElement {
 
       <div className="hud-layer">
         <TelemetryHeader telemetry={telemetry} audioEnabled={audio.enabled} audioMuted={audio.muted} audioVolume={audio.volume} soundscape={audio.soundscape} onEnableAudio={() => void audio.enable()} onToggleMute={audio.toggleMute} onVolumeChange={audio.setVolume} onSoundscapeChange={audio.setSoundscape} />
-        <TacticalRail telemetry={telemetry} cameraMode={cameraMode} onCameraModeChange={setCameraMode} />
-        <RackInspectorCard rack={rackSelection} onClose={() => setRackSelection(null)} />
-        <Oscilloscope telemetry={telemetry} />
-        <ChaosSuite telemetry={telemetry} sendCommand={sendCommand} />
-        <ImpactPanel telemetry={telemetry} />
-        <AgentTerminal telemetry={telemetry} />
-        <TelemetryPanels telemetry={telemetry} />
+        <TacticalRail telemetry={telemetry} cameraMode={cameraMode} onCameraModeChange={handleCameraModeChange} />
+        <section className="center-column" aria-label="Central 3D mission viewport controls">
+          <RackInspectorCard rack={rackSelection} onClose={() => setRackSelection(null)} />
+          <div className="center-dock">
+            <ChaosSuite telemetry={telemetry} sendCommand={sendChaosCommand} />
+            <AgentTerminal telemetry={telemetry} />
+          </div>
+        </section>
+        <aside className="telemetry-column" aria-label="Stacked telemetry column">
+          <Oscilloscope telemetry={telemetry} />
+          <ImpactPanel telemetry={telemetry} />
+          <TelemetryPanels telemetry={telemetry} />
+        </aside>
         <footer className="hud-footer">
           <span>LOCAL SIMULATION // DETERMINISTIC TELEMETRY STREAM</span>
           <span>BUILD 0.1.0 <i /> ALL SYSTEMS MONITORED</span>

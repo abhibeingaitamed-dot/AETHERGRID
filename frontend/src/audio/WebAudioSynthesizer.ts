@@ -1,4 +1,5 @@
-export type SoundscapeMode = 'cinematic' | 'minimalist' | 'muted';
+export type SoundscapeMode = 'cinematic' | 'haptics';
+export type AudioInteraction = 'camera' | 'chaos' | 'rack';
 
 export interface AudioTelemetryInput {
   frequencyHz: number;
@@ -88,6 +89,17 @@ export class WebAudioSynthesizer {
     this.applySoundscapeMix();
   }
 
+  playInteraction(interaction: AudioInteraction): void {
+    if (!this.context || !this.hapticsBus || this.muted) return;
+    const profile: Record<AudioInteraction, { startFrequency: number; endFrequency: number; peak: number; duration: number }> = {
+      camera: { startFrequency: 1_080, endFrequency: 760, peak: 0.04, duration: 0.11 },
+      chaos: { startFrequency: 220, endFrequency: 92, peak: 0.065, duration: 0.2 },
+      rack: { startFrequency: 1_460, endFrequency: 980, peak: 0.048, duration: 0.13 },
+    };
+    const selected = profile[interaction];
+    this.playInteractionTone(selected.startFrequency, selected.endFrequency, selected.peak, selected.duration);
+  }
+
   update(telemetry: AudioTelemetryInput): void {
     const previous = this.lastTelemetry;
     this.lastTelemetry = telemetry;
@@ -106,7 +118,7 @@ export class WebAudioSynthesizer {
       || telemetry.transformerTemperatureCelsius > 125
       || (telemetry.contingencyActive && telemetry.auditorState !== 'CONVERGED')
     );
-    const alarmTarget = alarmActive && this.soundscape !== 'muted' ? 0.055 : 0;
+    const alarmTarget = alarmActive ? 0.055 : 0;
     this.alarmBus?.gain.setTargetAtTime(alarmTarget, now, alarmActive ? 0.25 : 0.6);
     this.alarmPulseDepth?.gain.setTargetAtTime(alarmActive ? 0.026 : 0, now, 0.2);
     this.alarmOscillators.forEach((oscillator, index) => {
@@ -257,8 +269,8 @@ export class WebAudioSynthesizer {
     if (!this.context) return;
     const now = this.context.currentTime;
     const ambientTarget = this.soundscape === 'cinematic' ? 1 : 0;
-    const hapticsTarget = this.soundscape === 'muted' ? 0 : this.soundscape === 'minimalist' ? 1 : 0.7;
-    const alarmTarget = this.soundscape === 'muted' ? 0 : this.soundscape === 'minimalist' ? 0.7 : 1;
+    const hapticsTarget = this.soundscape === 'haptics' ? 1 : 0.7;
+    const alarmTarget = this.soundscape === 'haptics' ? 0.7 : 1;
     this.ambientBus?.gain.setTargetAtTime(ambientTarget, now, 0.45);
     this.hapticsBus?.gain.setTargetAtTime(hapticsTarget, now, 0.22);
     const alarmActive = this.lastTelemetry !== null && (
@@ -274,32 +286,37 @@ export class WebAudioSynthesizer {
 
   private rampMasterGain(): void {
     if (!this.context || !this.masterGain) return;
-    const target = this.enabled && !this.muted && this.soundscape !== 'muted' ? this.volume : 0;
+    const target = this.enabled && !this.muted ? this.volume : 0;
     this.masterGain.gain.setTargetAtTime(target, this.context.currentTime, 0.14);
   }
 
   private playCrystalClick(): void {
-    if (!this.context || !this.hapticsBus || this.soundscape === 'muted') return;
+    if (!this.context || !this.hapticsBus || this.muted) return;
+    this.playInteractionTone(1_320, 880, 0.055, 0.14);
+  }
+
+  private playInteractionTone(startFrequency: number, endFrequency: number, peak: number, duration: number): void {
+    if (!this.context || !this.hapticsBus || this.muted) return;
     const now = this.context.currentTime;
     const oscillator = this.context.createOscillator();
     const gain = this.context.createGain();
     const filter = this.context.createBiquadFilter();
     oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(1_320, now);
-    oscillator.frequency.exponentialRampToValueAtTime(880, now + 0.085);
+    oscillator.frequency.setValueAtTime(startFrequency, now);
+    oscillator.frequency.exponentialRampToValueAtTime(endFrequency, now + duration * 0.61);
     filter.type = 'highpass';
-    filter.frequency.value = 640;
+    filter.frequency.value = Math.min(startFrequency * 0.48, 760);
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.055, now + 0.008);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+    gain.gain.exponentialRampToValueAtTime(peak, now + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
     oscillator.connect(filter);
     filter.connect(gain);
     gain.connect(this.hapticsBus);
-    this.trackTransient(oscillator, now + 0.16);
+    this.trackTransient(oscillator, now + duration + 0.02);
   }
 
   private playDistantRumble(): void {
-    if (!this.context || !this.hapticsBus || this.soundscape === 'muted') return;
+    if (!this.context || !this.hapticsBus || this.muted) return;
     const now = this.context.currentTime;
     const oscillator = this.context.createOscillator();
     const filter = this.context.createBiquadFilter();
@@ -320,7 +337,7 @@ export class WebAudioSynthesizer {
   }
 
   private playResolutionChord(): void {
-    if (!this.context || !this.hapticsBus || this.soundscape === 'muted') return;
+    if (!this.context || !this.hapticsBus || this.muted) return;
     const now = this.context.currentTime;
     [261.63, 329.63, 392, 523.25].forEach((frequency, index) => {
       const oscillator = this.context!.createOscillator();

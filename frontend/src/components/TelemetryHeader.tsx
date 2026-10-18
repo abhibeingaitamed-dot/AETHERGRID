@@ -81,8 +81,7 @@ export function TelemetryHeader({ telemetry, audioEnabled, audioMuted, audioVolu
           <span>SCENE</span>
           <select aria-label="Audio soundscape" disabled={!audioEnabled} value={soundscape} onChange={(event) => onSoundscapeChange(event.target.value as SoundscapeMode)}>
             <option value="cinematic">CINEMATIC AMBIENT</option>
-            <option value="minimalist">MINIMALIST HAPTICS</option>
-            <option value="muted">MUTED</option>
+            <option value="haptics">TACTICAL HAPTICS</option>
           </select>
         </label>
       </div>
