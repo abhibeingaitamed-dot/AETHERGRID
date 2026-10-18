@@ -108,7 +108,7 @@ printf '\n'
 
 (cd "${ROOT_DIR}" && exec "${VENV_PYTHON}" -m uvicorn backend.app.main:app --host "${API_HOST}" --port "${API_PORT}") &
 BACKEND_PID=$!
-(cd "${ROOT_DIR}/frontend" && exec npm run dev -- --host "${FRONTEND_HOST}" --port "${FRONTEND_PORT}") &
+(cd "${ROOT_DIR}/frontend" && VITE_DEV_API_ORIGIN="http://${API_HOST}:${API_PORT}" VITE_API_WS_URL="ws://${API_HOST}:${API_PORT}/ws/telemetry" exec npm run dev -- --host "${FRONTEND_HOST}" --port "${FRONTEND_PORT}") &
 FRONTEND_PID=$!
 
 while :; do

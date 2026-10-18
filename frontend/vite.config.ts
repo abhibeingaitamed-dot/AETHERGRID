@@ -1,17 +1,20 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+const apiOrigin = process.env.VITE_DEV_API_ORIGIN ?? 'http://localhost:8000';
+const apiWebSocketOrigin = apiOrigin.replace(/^http/, 'ws');
+
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
     strictPort: true,
     proxy: {
-      '/api': 'http://localhost:8000',
-      '/health': 'http://localhost:8000',
-      '/ready': 'http://localhost:8000',
+      '/api': apiOrigin,
+      '/health': apiOrigin,
+      '/ready': apiOrigin,
       '/ws': {
-        target: 'ws://localhost:8000',
+        target: apiWebSocketOrigin,
         ws: true,
       },
     },
