@@ -3,9 +3,15 @@ import { formatNumber, formatUtcMilliseconds, type TelemetrySnapshot } from '../
 
 interface TelemetryHeaderProps {
   telemetry: TelemetrySnapshot;
+  audioEnabled: boolean;
+  audioMuted: boolean;
+  audioVolume: number;
+  onEnableAudio: () => void;
+  onToggleMute: () => void;
+  onVolumeChange: (value: number) => void;
 }
 
-export function TelemetryHeader({ telemetry }: TelemetryHeaderProps): ReactElement {
+export function TelemetryHeader({ telemetry, audioEnabled, audioMuted, audioVolume, onEnableAudio, onToggleMute, onVolumeChange }: TelemetryHeaderProps): ReactElement {
   const [utcNow, setUtcNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -49,6 +55,25 @@ export function TelemetryHeader({ telemetry }: TelemetryHeaderProps): ReactEleme
         <span className="readout-label">LINK DIAGNOSTICS</span>
         <strong className={`mono-value connection-value ${telemetry.streamStatus.toLowerCase()}`}><span className="signal-bars" aria-hidden="true"><i /><i /><i /><i /></span> {telemetry.streamStatus}</strong>
         <span className="sub-readout">{formatNumber(telemetry.streamHz, 0)} Hz PHYSICS LINK · {formatNumber(telemetry.connectionLatencyMs, 1)} ms TICK</span>
+      </div>
+
+      <div className="audio-console" aria-label="Procedural audio controls">
+        {!audioEnabled ? (
+          <button className="audio-enable-button" type="button" onClick={onEnableAudio}>
+            <span className="audio-wave-icon" aria-hidden="true">)))</span>
+            ENABLE AUDIO
+          </button>
+        ) : (
+          <>
+            <button className={`audio-mute-button ${audioMuted ? 'is-muted' : ''}`} type="button" onClick={onToggleMute} aria-label={audioMuted ? 'Unmute AETHERGRID audio' : 'Mute AETHERGRID audio'}>
+              {audioMuted ? 'MUTED' : 'AUDIO'}
+            </button>
+            <label className="volume-control">
+              <span>VOL</span>
+              <input aria-label="Master audio volume" type="range" min="0" max="1" step="0.01" value={audioVolume} onChange={(event) => onVolumeChange(Number(event.target.value))} />
+            </label>
+          </>
+        )}
       </div>
     </header>
   );

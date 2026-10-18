@@ -1,7 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type CameraMode = 'overview' | 'canyon' | 'inspection';
 export type StreamStatus = 'CONNECTING' | 'LIVE' | 'RECONNECTING' | 'OFFLINE';
+
+export type WebSocketCommand =
+  | { type: 'ping'; request_id?: string }
+  | { type: 'contingency'; trip_mw?: number; request_id?: string }
+  | { type: 'transformer_overload'; overload_mw?: number; request_id?: string }
+  | { type: 'renewable_drop'; drop_mw?: number; request_id?: string }
+  | { type: 'reset'; request_id?: string };
 
 export interface AgentLogEntry {
   sequence: number;
@@ -19,6 +26,10 @@ export interface TelemetrySnapshot {
   loadPercent: number;
   frequencyHz: number;
   voltageKv: number;
+  generatorTripMw: number;
+  transformerOverloadMw: number;
+  renewableDropMw: number;
+  transformerTemperatureCelsius: number;
   thermalCelsius: number;
   efficiencyPercent: number;
   activeNodes: number;
@@ -62,7 +73,10 @@ interface LiveTelemetryEnvelope {
     balance_mw: number;
     voltage_kv: number;
     generator_trip_mw: number;
+    transformer_overload_mw: number;
+    renewable_drop_mw: number;
     nadir_hz: number;
+    transformer_temperature_celsius: number;
     base_capacity_mw: number;
     contingency_active: boolean;
   };
@@ -104,6 +118,10 @@ const emptyTelemetry = (streamStatus: StreamStatus): TelemetrySnapshot => ({
   loadPercent: 0,
   frequencyHz: 60,
   voltageKv: 345,
+  generatorTripMw: 0,
+  transformerOverloadMw: 0,
+  renewableDropMw: 0,
+  transformerTemperatureCelsius: 68,
   thermalCelsius: 0,
   efficiencyPercent: 100,
   activeNodes: 12_000,
@@ -146,7 +164,7 @@ const isLiveTelemetryEnvelope = (value: unknown): value is LiveTelemetryEnvelope
   );
 };
 
-const mapEnvelope = (envelope: LiveTelemetryEnvelope, streamStatus: StreamStatus): TelemetrySnapshot => {
+const mapEnvelope = (envelope: LiveTelemetryEnvelope, streamStatus: StreamStatus, previousLogs: AgentLogEntry[]): TelemetrySnapshot => {
   const loadPercent = envelope.compute.cluster_nominal_power_mw > 0
     ? (envelope.compute.cluster_power_mw / envelope.compute.cluster_nominal_power_mw) * 100
     : 0;
@@ -157,6 +175,9 @@ const mapEnvelope = (envelope: LiveTelemetryEnvelope, streamStatus: StreamStatus
       ? 'ELEVATED'
       : 'NOMINAL';
 
+  const eventLog = new Map<number, AgentLogEntry>();
+  [...previousLogs, ...envelope.events].forEach((event) => eventLog.set(event.sequence, event));
+
   return {
     elapsedSeconds: envelope.simulation_time_ms / 1_000,
     simulationTimeMs: envelope.simulation_time_ms,
@@ -165,6 +186,10 @@ const mapEnvelope = (envelope: LiveTelemetryEnvelope, streamStatus: StreamStatus
     loadPercent,
     frequencyHz: envelope.grid.frequency_hz,
     voltageKv: envelope.grid.voltage_kv,
+    generatorTripMw: envelope.grid.generator_trip_mw,
+    transformerOverloadMw: envelope.grid.transformer_overload_mw,
+    renewableDropMw: envelope.grid.renewable_drop_mw,
+    transformerTemperatureCelsius: envelope.grid.transformer_temperature_celsius,
     thermalCelsius: envelope.compute.thermal_celsius,
     efficiencyPercent: Math.max(0, 100 - Math.abs(envelope.grid.balance_mw) * 0.02),
     activeNodes: envelope.compute.active_gpu_count,
@@ -191,7 +216,7 @@ const mapEnvelope = (envelope: LiveTelemetryEnvelope, streamStatus: StreamStatus
     auditorState: envelope.agents.auditor_state,
     auditorDetail: envelope.agents.auditor_detail,
     gridState,
-    agentLogs: envelope.events,
+    agentLogs: Array.from(eventLog.values()).sort((left, right) => left.sequence - right.sequence).slice(-120),
   };
 };
 
@@ -202,8 +227,16 @@ function telemetrySocketUrl(): string {
   return `${protocol}//${window.location.host}/ws/telemetry`;
 }
 
-export function useLiveTelemetry(): TelemetrySnapshot {
+export function useLiveTelemetry(): { telemetry: TelemetrySnapshot; sendCommand: (command: WebSocketCommand) => boolean } {
   const [snapshot, setSnapshot] = useState<TelemetrySnapshot>(() => emptyTelemetry('CONNECTING'));
+  const socketRef = useRef<WebSocket | null>(null);
+
+  const sendCommand = useCallback((command: WebSocketCommand): boolean => {
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+    socket.send(JSON.stringify(command));
+    return true;
+  }, []);
 
   useEffect(() => {
     let socket: WebSocket | null = null;
@@ -223,6 +256,7 @@ export function useLiveTelemetry(): TelemetrySnapshot {
       if (disposed) return;
       setSnapshot((current) => ({ ...current, streamStatus: attempts === 0 ? 'CONNECTING' : 'RECONNECTING' }));
       socket = new WebSocket(telemetrySocketUrl());
+      socketRef.current = socket;
       socket.onopen = () => {
         attempts = 0;
         setSnapshot((current) => ({ ...current, streamStatus: 'LIVE' }));
@@ -232,7 +266,7 @@ export function useLiveTelemetry(): TelemetrySnapshot {
         try {
           const parsed: unknown = JSON.parse(event.data as string);
           if (isLiveTelemetryEnvelope(parsed)) {
-            setSnapshot(mapEnvelope(parsed, 'LIVE'));
+            setSnapshot((current) => mapEnvelope(parsed, 'LIVE', current.agentLogs));
           }
         } catch {
           setSnapshot((current) => ({ ...current, streamStatus: 'RECONNECTING' }));
@@ -241,6 +275,7 @@ export function useLiveTelemetry(): TelemetrySnapshot {
       socket.onerror = () => socket?.close();
       socket.onclose = () => {
         socket = null;
+        socketRef.current = null;
         scheduleReconnect();
       };
     };
@@ -250,10 +285,11 @@ export function useLiveTelemetry(): TelemetrySnapshot {
       disposed = true;
       if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
       socket?.close();
+      socketRef.current = null;
     };
   }, []);
 
-  return snapshot;
+  return { telemetry: snapshot, sendCommand };
 }
 
 export function formatUtcMilliseconds(date: Date): string {
